@@ -407,7 +407,8 @@ public class MainActivity extends Activity {
         last.addView(actionButton("✔ تمام، برگشت", "#F5A623", v -> showRemote()), weighted(50));
         root.addView(last);
 
-        sweepCode = prefs.getInt("sweep_pos", 0);
+        // codes 0..91 were already checked on this TV, continue after them
+        sweepCode = Math.max(prefs.getInt("sweep_pos", 0), 92);
         updateSweepView();
     }
 
