@@ -174,7 +174,7 @@ public class MainActivity extends Activity {
 
         status = new TextView(this);
         status.setText(hasIr
-                ? "دکمه‌ها کار نمی‌کنند؟ پایین صفحه «⚙ پیدا کردن کد دکمه‌ها» را یک بار انجام بده."
+                ? "ریموت امیری"
                 : "این گوشی فرستنده مادون‌قرمز (IR) ندارد");
         status.setTextColor(Color.parseColor(hasIr ? "#8A9099" : "#FF7070"));
         status.setTextSize(13);
@@ -199,7 +199,7 @@ public class MainActivity extends Activity {
         LinearLayout menuRow = row();
         menuRow.addView(remoteButton("MENU", MENU, false, "#FFFFFF", 15), weighted(48));
         menuRow.addView(new View(this), weighted(48));
-        menuRow.addView(remoteButton("⌂", HOME, false, "#FFFFFF", 22), weighted(48));
+        menuRow.addView(rawButton("⇆ قبلی", 21, 15), weighted(48));
         root.addView(menuRow);
         root.addView(space(4));
 
@@ -208,7 +208,7 @@ public class MainActivity extends Activity {
         r1.addView(remoteButton("▲", UP, true, "#FFFFFF", 22), weighted(66));
         r1.addView(new View(this), weighted(66));
         LinearLayout r2 = row();
-        r2.addView(remoteButton("◀", LEFT, true, "#FFFFFF", 22), weighted(66));
+        r2.addView(new View(this), weighted(66));
         r2.addView(remoteButton("OK", OK, false, "#F5A623", 20), weighted(66));
         r2.addView(remoteButton("▶", RIGHT, true, "#FFFFFF", 22), weighted(66));
         LinearLayout r3 = row();
@@ -221,7 +221,7 @@ public class MainActivity extends Activity {
         root.addView(space(4));
 
         LinearLayout backRow = row();
-        backRow.addView(remoteButton("↩", BACK, false, "#FFFFFF", 22), weighted(48));
+        backRow.addView(remoteButton("🖱 موس", MOUSE, false, "#FFFFFF", 15), weighted(48));
         backRow.addView(new View(this), weighted(48));
         backRow.addView(remoteButton("EXIT", EXIT, false, "#FFFFFF", 15), weighted(48));
         root.addView(backRow);
@@ -235,7 +235,6 @@ public class MainActivity extends Activity {
         centerCol.setGravity(Gravity.CENTER);
         centerCol.addView(remoteButton("SOURCE", SOURCE, false, "#FFFFFF", 13), tall(60));
         centerCol.addView(remoteButton("😴 خواب", SLEEP, false, "#FFFFFF", 13), tall(60));
-        centerCol.addView(remoteButton("🖱 موس", MOUSE, false, "#FFFFFF", 13), tall(60));
         LinearLayout ch = column();
         ch.addView(remoteButton("︿\nCH", CH_UP, true, "#2B4C7E", 20), tall(78));
         ch.addView(remoteButton("﹀", CH_DN, true, "#2B4C7E", 26), tall(78));
@@ -284,6 +283,8 @@ public class MainActivity extends Activity {
         root.addView(e2);
         LinearLayout e3 = row();
         e3.addView(rawButton("🌐 وب", 91, 14), weighted(50));
+        e3.addView(rawButton("3D", 0, 14), weighted(50));
+        e3.addView(rawButton("USB ▶", 8, 14), weighted(50));
         root.addView(e3);
         root.addView(space(18));
 
@@ -291,6 +292,8 @@ public class MainActivity extends Activity {
         Button setup = plainButton("⚙  پیدا کردن کد دکمه‌ها (یک بار)", "#F5A623", 16);
                 setup.setOnClickListener(v -> showSetup());
         setupRow.addView(setup, weighted(52));
+        // all codes are found; the finder stays in code but is hidden
+        setupRow.setVisibility(View.GONE);
         root.addView(setupRow);
 
         TextView ver = new TextView(this);
@@ -416,10 +419,10 @@ public class MainActivity extends Activity {
     // EPG 3, size 6, info 14, digit3 15, digit7 24, digit4 30, digit2 67, digit8 69,
     // fav 80, sound mode 81, sleep 83, digit0 86, audio 89, web 91.
     // Number keys found on this TV (-1 = not found yet); more can be found in the sweep.
-    static final int[] DIGIT_BASE = {86, -1, 67, 15, 30, -1, -1, 24, 69, -1};
+    static final int[] DIGIT_BASE = {86, 66, 67, 15, 30, 29, 28, 24, 69, 76};
 
     private int digitCode(int n) {
-        return prefs.getInt("dig_" + n, DIGIT_BASE[n]);
+        return DIGIT_BASE[n];
     }
 
     static final int[] OTHER_FUNCS = {3, 6, 14, 15, 24, 30, 67, 69, 80, 81, 83, 86, 89, 91};
