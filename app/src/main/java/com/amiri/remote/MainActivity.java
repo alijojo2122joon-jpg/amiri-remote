@@ -257,17 +257,17 @@ public class MainActivity extends Activity {
         more.setPadding(0, 0, 0, px(4));
         root.addView(more);
 
-        int[][] numpad = {{-1, 67, 15}, {30, -1, -1}, {24, 69, -1}};
         for (int r = 0; r < 3; r++) {
             LinearLayout nr = row();
             for (int c = 0; c < 3; c++) {
-                nr.addView(rawButton(String.valueOf(r * 3 + c + 1), numpad[r][c], 20), weighted(52));
+                int n = r * 3 + c + 1;
+                nr.addView(rawButton(String.valueOf(n), digitCode(n), 20), weighted(52));
             }
             root.addView(nr);
         }
         LinearLayout zr = row();
         zr.addView(new View(this), weighted(52));
-        zr.addView(rawButton("0", 86, 20), weighted(52));
+        zr.addView(rawButton("0", digitCode(0), 20), weighted(52));
         zr.addView(new View(this), weighted(52));
         root.addView(zr);
         root.addView(space(8));
@@ -375,15 +375,25 @@ public class MainActivity extends Activity {
         q.setPadding(0, px(12), 0, px(2));
         root.addView(q);
 
-        int[] order = {VOL_UP, VOL_DN, MUTE, CH_UP, CH_DN, UP, DOWN, LEFT, RIGHT, OK,
+        int[] all = {VOL_UP, VOL_DN, MUTE, CH_UP, CH_DN, UP, DOWN, LEFT, RIGHT, OK,
                 BACK, EXIT, HOME, MENU, SOURCE, POWER};
-        LinearLayout line = null;
-        for (int i = 0; i < order.length; i++) {
-            if (i % 3 == 0) { line = row(); root.addView(line); }
-            final int key = order[i];
-            line.addView(actionButton(KEY_NAMES[key], "#FFFFFF", v -> assignSweep(key)), weighted(50));
+        java.util.ArrayList<Button> btns = new java.util.ArrayList<>();
+        for (int key : all) {
+            if (prefs.getBoolean("ok_k" + key, false)) continue; // already found
+            btns.add(actionButton(KEY_NAMES[key], "#FFFFFF", v -> assignSweep(key)));
         }
-        for (int f = order.length % 3; f > 0 && f < 3; f++) line.addView(new View(this), weighted(50));
+        for (int n = 0; n < 10; n++) {
+            if (digitCode(n) >= 0) continue; // already found
+            final int d = n;
+            btns.add(actionButton("عدد " + n, "#FFFFFF", v -> assignDigit(d)));
+        }
+        if (btns.isEmpty()) q.setText("همه دکمه‌ها پیدا شد ✔");
+        LinearLayout line = null;
+        for (int i = 0; i < btns.size(); i++) {
+            if (i % 3 == 0) { line = row(); root.addView(line); }
+            line.addView(btns.get(i), weighted(50));
+        }
+        if (line != null) for (int f = btns.size() % 3; f > 0 && f < 3; f++) line.addView(new View(this), weighted(50));
 
         sweepDone = new TextView(this);
         sweepDone.setTextColor(Color.parseColor("#2B2F36"));
@@ -404,11 +414,19 @@ public class MainActivity extends Activity {
     // Codes that do something else on this TV - skipped while sweeping:
     // EPG 3, size 6, info 14, digit3 15, digit7 24, digit4 30, digit2 67, digit8 69,
     // fav 80, sound mode 81, sleep 83, digit0 86, audio 89, web 91.
+    // Number keys found on this TV (-1 = not found yet); more can be found in the sweep.
+    static final int[] DIGIT_BASE = {86, -1, 67, 15, 30, -1, -1, 24, 69, -1};
+
+    private int digitCode(int n) {
+        return prefs.getInt("dig_" + n, DIGIT_BASE[n]);
+    }
+
     static final int[] OTHER_FUNCS = {3, 6, 14, 15, 24, 30, 67, 69, 80, 81, 83, 86, 89, 91};
 
     /** Codes already confirmed for a key are skipped while sweeping. */
     private boolean isTaken(int code) {
         for (int x : OTHER_FUNCS) if (x == code) return true;
+        for (int n = 0; n < 10; n++) if (digitCode(n) == code) return true;
         for (int k = 0; k < KEY_COUNT; k++) {
             if (prefs.getBoolean("ok_k" + k, false) && codeFor(k) == code) return true;
         }
@@ -465,7 +483,20 @@ public class MainActivity extends Activity {
                 .putBoolean("ok_k" + key, true)
                 .apply();
         toast("کد " + code + " ← «" + KEY_NAMES[key] + "» ✔  (اگر مطمئن نیستی با ◀ ▶ چک کن)");
-        updateSweepView();
+        showSetup();
+        if (wasRunning) toggleSweep();
+    }
+
+    private void assignDigit(int n) {
+        boolean wasRunning = sweeping;
+        pauseSweep();
+        int code = sweepCode;
+        if (wasRunning && prefs.getLong("sweep_t", 0) > System.currentTimeMillis() - 500) {
+            code = nextFreeCode(sweepCode, -1);
+        }
+        prefs.edit().putInt("dig_" + n, code).apply();
+        toast("کد " + code + " ← «عدد " + n + "» ✔");
+        showSetup();
         if (wasRunning) toggleSweep();
     }
 
