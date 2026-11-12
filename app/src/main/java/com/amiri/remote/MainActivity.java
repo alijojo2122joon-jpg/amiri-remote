@@ -248,6 +248,45 @@ public class MainActivity extends Activity {
         root.addView(mid);
         root.addView(space(18));
 
+        // ---- extra keys found on this TV (sent as raw codes; -1 = not found yet) ----
+        TextView more = new TextView(this);
+        more.setText("دکمه‌های بیشتر");
+        more.setTextColor(Color.parseColor("#8A9099"));
+        more.setTextSize(13);
+        more.setGravity(Gravity.CENTER);
+        more.setPadding(0, 0, 0, px(4));
+        root.addView(more);
+
+        int[][] numpad = {{-1, 67, 15}, {30, -1, -1}, {24, 69, -1}};
+        for (int r = 0; r < 3; r++) {
+            LinearLayout nr = row();
+            for (int c = 0; c < 3; c++) {
+                nr.addView(rawButton(String.valueOf(r * 3 + c + 1), numpad[r][c], 20), weighted(52));
+            }
+            root.addView(nr);
+        }
+        LinearLayout zr = row();
+        zr.addView(new View(this), weighted(52));
+        zr.addView(rawButton("0", 86, 20), weighted(52));
+        zr.addView(new View(this), weighted(52));
+        root.addView(zr);
+        root.addView(space(8));
+
+        LinearLayout e1 = row();
+        e1.addView(rawButton("EPG", 3, 14), weighted(50));
+        e1.addView(rawButton("INFO", 14, 14), weighted(50));
+        e1.addView(rawButton("FAV ⭐", 80, 14), weighted(50));
+        root.addView(e1);
+        LinearLayout e2 = row();
+        e2.addView(rawButton("AUDIO", 89, 14), weighted(50));
+        e2.addView(rawButton("SIZE", 6, 14), weighted(50));
+        e2.addView(rawButton("S.MODE 🔊", 81, 13), weighted(50));
+        root.addView(e2);
+        LinearLayout e3 = row();
+        e3.addView(rawButton("🌐 وب", 91, 14), weighted(50));
+        root.addView(e3);
+        root.addView(space(18));
+
         LinearLayout setupRow = row();
         Button setup = plainButton("⚙  پیدا کردن کد دکمه‌ها (یک بار)", "#F5A623", 16);
                 setup.setOnClickListener(v -> showSetup());
@@ -590,6 +629,29 @@ public class MainActivity extends Activity {
         b.setOnClickListener(v -> {
             v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
             l.onClick(v);
+        });
+        return b;
+    }
+
+    private Button rawButton(String text, int code, int textSp) {
+        Button b = plainButton(text, "#FFFFFF", textSp);
+        if (code < 0) b.setAlpha(0.45f);
+        b.setOnTouchListener((v, e) -> {
+            switch (e.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    v.setPressed(true);
+                    v.setTranslationZ(-px(4));
+                    v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+                    if (code < 0) toast("کد «" + text + "» هنوز پیدا نشده");
+                    else sendRaw(code);
+                    return true;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    v.setPressed(false);
+                    v.setTranslationZ(0);
+                    return true;
+            }
+            return false;
         });
         return b;
     }
