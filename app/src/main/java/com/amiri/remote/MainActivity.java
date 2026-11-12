@@ -8,6 +8,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
 import android.hardware.ConsumerIrManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -87,7 +88,8 @@ public class MainActivity extends Activity {
         set = Math.min(prefs.getInt("set", 0), SET_NAMES.length - 1);
         ir = (ConsumerIrManager) getSystemService(Context.CONSUMER_IR_SERVICE);
         hasIr = ir != null && ir.hasIrEmitter();
-        getWindow().setStatusBarColor(Color.parseColor("#0F1626"));
+        getWindow().setStatusBarColor(Color.parseColor("#EDEFF2"));
+        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
         showRemote();
     }
 
@@ -155,7 +157,7 @@ public class MainActivity extends Activity {
         status.setText(hasIr
                 ? "اگر دکمه‌ای اشتباه کار کرد، پایین صفحه «⚙ تنظیم دکمه‌ها» را بزن."
                 : "این گوشی فرستنده مادون‌قرمز (IR) ندارد");
-        status.setTextColor(Color.parseColor(hasIr ? "#9FB0D0" : "#FF7070"));
+        status.setTextColor(Color.parseColor(hasIr ? "#8A9099" : "#FF7070"));
         status.setTextSize(13);
         status.setGravity(Gravity.CENTER);
         status.setPadding(0, px(6), 0, px(12));
@@ -211,8 +213,7 @@ public class MainActivity extends Activity {
 
         LinearLayout setupRow = row();
         Button setup = plainButton("⚙  تنظیم دکمه‌ها", "#F5A623", 16);
-        setup.setTextColor(Color.BLACK);
-        setup.setOnClickListener(v -> showSetup());
+                setup.setOnClickListener(v -> showSetup());
         setupRow.addView(setup, weighted(52));
         root.addView(setupRow);
     }
@@ -240,8 +241,7 @@ public class MainActivity extends Activity {
         for (int i = 0; i < setButtons.length; i++) {
             if (setButtons[i] == null) continue;
             boolean on = i == set;
-            setButtons[i].setBackground(bg(on ? "#F5A623" : "#24314F"));
-            setButtons[i].setTextColor(on ? Color.BLACK : Color.WHITE);
+            styleButton(setButtons[i], on ? "#F5A623" : "#FFFFFF");
         }
     }
 
@@ -255,7 +255,7 @@ public class MainActivity extends Activity {
         help.setText("۱) کدی را انتخاب کن که تلویزیون با آن واکنش نشان می‌دهد.\n"
                 + "۲) با ◀ ▶ کدها را یکی‌یکی بفرست (یا اسکن خودکار).\n"
                 + "۳) هر وقت تلویزیون کاری کرد، پایین بزن که آن کار کدام دکمه است.");
-        help.setTextColor(Color.parseColor("#9FB0D0"));
+        help.setTextColor(Color.parseColor("#8A9099"));
         help.setTextSize(13);
         help.setPadding(0, px(6), 0, px(10));
         root.addView(help);
@@ -264,14 +264,14 @@ public class MainActivity extends Activity {
         root.addView(space(10));
 
         codeView = new TextView(this);
-        codeView.setTextColor(Color.WHITE);
+        codeView.setTextColor(Color.parseColor("#1F2329"));
         codeView.setTextSize(38);
         codeView.setTypeface(Typeface.DEFAULT_BOLD);
         codeView.setGravity(Gravity.CENTER);
         root.addView(codeView);
 
         codeInfo = new TextView(this);
-        codeInfo.setTextColor(Color.parseColor("#F5A623"));
+        codeInfo.setTextColor(Color.parseColor("#E8920C"));
         codeInfo.setTextSize(13);
         codeInfo.setGravity(Gravity.CENTER);
         codeInfo.setPadding(0, 0, 0, px(8));
@@ -286,13 +286,13 @@ public class MainActivity extends Activity {
         root.addView(nav);
 
         LinearLayout scanRow = row();
-        scanBtn = actionButton("▶ اسکن خودکار", "#2E7D5B", v -> toggleScan());
+        scanBtn = actionButton("▶ اسکن خودکار", "#F5A623", v -> toggleScan());
         scanRow.addView(scanBtn, weighted(50));
         root.addView(scanRow);
 
         TextView assignTitle = new TextView(this);
         assignTitle.setText("این کد را بده به دکمه:");
-        assignTitle.setTextColor(Color.WHITE);
+        assignTitle.setTextColor(Color.parseColor("#1F2329"));
         assignTitle.setTextSize(15);
         assignTitle.setPadding(0, px(14), 0, px(4));
         root.addView(assignTitle);
@@ -334,7 +334,7 @@ public class MainActivity extends Activity {
             scanning = true;
             if (scanBtn != null) {
                 scanBtn.setText("⏸ توقف اسکن");
-                scanBtn.setBackground(bg("#C62828"));
+                styleButton(scanBtn, "#D32F2F");
             }
             sendRaw(scanCode);
             updateCodeView();
@@ -347,7 +347,7 @@ public class MainActivity extends Activity {
         handler.removeCallbacks(scanStep);
         if (scanBtn != null) {
             scanBtn.setText("▶ اسکن خودکار");
-            scanBtn.setBackground(bg("#2E7D5B"));
+            styleButton(scanBtn, "#F5A623");
         }
     }
 
@@ -384,7 +384,7 @@ public class MainActivity extends Activity {
 
     private LinearLayout page() {
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(Color.parseColor("#0F1626"));
+        scroll.setBackgroundColor(Color.parseColor("#EDEFF2"));
         scroll.setFillViewport(true);
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
@@ -399,7 +399,7 @@ public class MainActivity extends Activity {
     private TextView title(String text) {
         TextView t = new TextView(this);
         t.setText(text);
-        t.setTextColor(Color.WHITE);
+        t.setTextColor(Color.parseColor("#1F2329"));
         t.setTextSize(22);
         t.setTypeface(Typeface.DEFAULT_BOLD);
         t.setGravity(Gravity.CENTER);
@@ -426,6 +426,7 @@ public class MainActivity extends Activity {
             switch (e.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     v.setPressed(true);
+                    v.setTranslationZ(-px(4));
                     v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
                     send(key);
                     if (repeat) handler.postDelayed(repeater[0], 450);
@@ -433,6 +434,7 @@ public class MainActivity extends Activity {
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
                     v.setPressed(false);
+                    v.setTranslationZ(0);
                     handler.removeCallbacks(repeater[0]);
                     return true;
             }
@@ -446,31 +448,54 @@ public class MainActivity extends Activity {
         b.setAllCaps(false);
         b.setText(text);
         b.setTextSize(textSp);
-        b.setTextColor(Color.WHITE);
-        b.setBackground(bg(color));
+        b.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         b.setStateListAnimator(null);
-        b.setPadding(0, 0, 0, 0);
+        b.setPadding(px(4), 0, px(4), 0);
+        styleButton(b, color);
         return b;
     }
 
-    private StateListDrawable bg(String color) {
-        int c = Color.parseColor(color);
-        GradientDrawable normal = new GradientDrawable();
-        normal.setColor(c);
-        normal.setCornerRadius(px(16));
-        GradientDrawable pressed = new GradientDrawable();
-        pressed.setColor(lighten(c));
-        pressed.setCornerRadius(px(16));
+    /**
+     * Light "soft UI" look: white pill buttons with a soft shadow; the orange
+     * accent (or the red power button) gets a warm glowing fill.
+     * Any other colour passed in is treated as a normal white button.
+     */
+    private void styleButton(Button b, String color) {
+        boolean accent = color.equals("#F5A623") || color.equals("#4A6FD1");
+        boolean danger = color.equals("#D32F2F") || color.equals("#5A2A2A");
+        int radius = px(26);
+
+        GradientDrawable normal, pressed;
+        if (accent || danger) {
+            int c1 = Color.parseColor(accent ? "#FFC247" : "#FF6B5E");
+            int c2 = Color.parseColor(accent ? "#F29A0E" : "#E53935");
+            normal = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{c1, c2});
+            pressed = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{c2, c2});
+            b.setTextColor(Color.WHITE);
+            if (Build.VERSION.SDK_INT >= 28) {
+                int glow = Color.parseColor(accent ? "#F5A623" : "#E53935");
+                b.setOutlineAmbientShadowColor(glow);
+                b.setOutlineSpotShadowColor(glow);
+            }
+        } else {
+            normal = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[]{Color.parseColor("#FFFFFF"), Color.parseColor("#F6F7F9")});
+            pressed = new GradientDrawable();
+            pressed.setColor(Color.parseColor("#E6E8EC"));
+            b.setTextColor(Color.parseColor("#2B2F36"));
+            if (Build.VERSION.SDK_INT >= 28) {
+                b.setOutlineAmbientShadowColor(Color.parseColor("#8A94A6"));
+                b.setOutlineSpotShadowColor(Color.parseColor("#8A94A6"));
+            }
+        }
+        normal.setCornerRadius(radius);
+        pressed.setCornerRadius(radius);
+        normal.setStroke(px(1), Color.parseColor(accent || danger ? "#00FFFFFF" : "#FFFFFF"));
         StateListDrawable s = new StateListDrawable();
         s.addState(new int[]{android.R.attr.state_pressed}, pressed);
         s.addState(new int[]{}, normal);
-        return s;
-    }
-
-    private static int lighten(int c) {
-        return Color.rgb(Math.min(255, Color.red(c) + 50),
-                Math.min(255, Color.green(c) + 50),
-                Math.min(255, Color.blue(c) + 50));
+        b.setBackground(s);
+        b.setElevation(px(accent || danger ? 8 : 5));
     }
 
     private LinearLayout row() {
@@ -488,7 +513,7 @@ public class MainActivity extends Activity {
 
     private LinearLayout.LayoutParams weighted(int heightDp) {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, px(heightDp), 1f);
-        lp.setMargins(px(4), px(4), px(4), px(4));
+        lp.setMargins(px(7), px(7), px(7), px(7));
         return lp;
     }
 
@@ -502,7 +527,7 @@ public class MainActivity extends Activity {
     private LinearLayout.LayoutParams tall(int heightDp) {
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, px(heightDp));
-        lp.setMargins(0, px(4), 0, px(4));
+        lp.setMargins(px(3), px(7), px(3), px(7));
         return lp;
     }
 
