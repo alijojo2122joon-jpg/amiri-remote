@@ -47,23 +47,23 @@ public class MainActivity extends Activity {
 
     static final int POWER = 0, MUTE = 1, VOL_UP = 2, VOL_DN = 3, CH_UP = 4, CH_DN = 5,
             OK = 6, UP = 7, DOWN = 8, LEFT = 9, RIGHT = 10, HOME = 11, BACK = 12, MENU = 13,
-            SOURCE = 14;
-    static final int KEY_COUNT = 15;
+            SOURCE = 14, EXIT = 15;
+    static final int KEY_COUNT = 16;
 
     static final String[] KEY_NAMES = {
             "روشن/خاموش", "بی‌صدا", "صدا +", "صدا −", "کانال +", "کانال −",
-            "OK", "بالا ▲", "پایین ▼", "چپ ◀", "راست ▶", "خانه", "برگشت", "منو", "ورودی (Source)"};
+            "OK", "بالا ▲", "پایین ▼", "چپ ◀", "راست ▶", "خانه", "برگشت", "منو", "ورودی (Source)", "خروج (EXIT)"};
 
     static final String[] SET_NAMES = {"کد ۱", "کد ۲", "کد ۳", "کد ۴", "کد ۵"};
     static final int[][] ADDR = {{0x00, 0xBF}, {0x20, 0xDF}, {0x07, 0x07}, {0x00, 0xFF}, {0x04, 0xFB}};
     static final boolean[] SAMSUNG = {false, false, true, false, false};
     static final int[][] CODES = {
             // POWER MUTE VOL+ VOL- CH+  CH-  OK   UP   DOWN LEFT RIGHT HOME BACK MENU SOURCE
-            {0x00, 0x01, 0x48, 0x49, 0x4A, 0x4B, 0x10, 0x13, 0x14, 0x11, 0x12, 0x64, 0x15, 0x40, 0x41},
-            {0x0B, 0x53, 0x03, 0x41, 0x02, 0x09, 0x4A, 0x47, 0x4D, 0x49, 0x4B, 0x0F, 0x1E, 0x4E, 0x52},
-            {2, 15, 7, 11, 18, 16, 104, 96, 97, 101, 98, 121, 88, 26, 1},
-            {0x45, 0x47, 0x15, 0x07, 0x09, 0x16, 0x1C, 0x18, 0x52, 0x08, 0x5A, 0x44, 0x43, 0x40, 0x46},
-            {0x08, 0x09, 0x02, 0x03, 0x00, 0x01, 0x44, 0x40, 0x41, 0x07, 0x06, 0x7C, 0x28, 0x43, 0x0B},
+            {0x00, 0x01, 0x48, 0x49, 0x4A, 0x4B, 0x10, 0x13, 0x14, 0x11, 0x12, 0x64, 0x15, 0x40, 0x41, 0x1C},
+            {0x0B, 0x53, 0x03, 0x41, 0x02, 0x09, 0x4A, 0x47, 0x4D, 0x49, 0x4B, 0x0F, 0x1E, 0x4E, 0x52, 0x5B},
+            {2, 15, 7, 11, 18, 16, 104, 96, 97, 101, 98, 121, 88, 26, 1, 45},
+            {0x45, 0x47, 0x15, 0x07, 0x09, 0x16, 0x1C, 0x18, 0x52, 0x08, 0x5A, 0x44, 0x43, 0x40, 0x46, 0x4A},
+            {0x08, 0x09, 0x02, 0x03, 0x00, 0x01, 0x44, 0x40, 0x41, 0x07, 0x06, 0x7C, 0x28, 0x43, 0x0B, 0x5B},
     };
 
     private ConsumerIrManager ir;
@@ -161,48 +161,62 @@ public class MainActivity extends Activity {
         bannerRow.addView(updateBanner, weighted(56));
         root.addView(bannerRow);
 
-        LinearLayout powerRow = row();
-        powerRow.addView(remoteButton("⏻  روشن / خاموش", POWER, false, "#D32F2F", 18), weighted(62));
-        root.addView(powerRow);
-        root.addView(space(12));
+        // Layout copied from the physical RM-014S+ remote.
+        LinearLayout top = row();
+        top.addView(remoteButton("⏻", POWER, false, "#D32F2F", 24), weighted(58));
+        top.addView(new View(this), weighted(58));
+        top.addView(remoteButton("🔇", MUTE, false, "#2E9E4F", 22), weighted(58));
+        root.addView(top);
+        root.addView(space(8));
 
-        LinearLayout mid = row();
-        LinearLayout vol = column();
-        vol.addView(remoteButton("صدا +", VOL_UP, true, "#2E4A7D", 18), tall(70));
-        vol.addView(remoteButton("صدا −", VOL_DN, true, "#2E4A7D", 18), tall(70));
-        LinearLayout centerCol = column();
-        centerCol.addView(remoteButton("🔇\nبی‌صدا", MUTE, false, "#3A3F55", 15), tall(154));
-        LinearLayout ch = column();
-        ch.addView(remoteButton("کانال +", CH_UP, true, "#2E7D5B", 18), tall(70));
-        ch.addView(remoteButton("کانال −", CH_DN, true, "#2E7D5B", 18), tall(70));
-        mid.addView(vol, weightedWrap());
-        mid.addView(centerCol, weightedWrap());
-        mid.addView(ch, weightedWrap());
-        root.addView(mid);
-        root.addView(space(14));
+        LinearLayout menuRow = row();
+        menuRow.addView(remoteButton("MENU", MENU, false, "#FFFFFF", 15), weighted(48));
+        menuRow.addView(new View(this), weighted(48));
+        menuRow.addView(remoteButton("⌂", HOME, false, "#FFFFFF", 22), weighted(48));
+        root.addView(menuRow);
+        root.addView(space(4));
 
         LinearLayout r1 = row();
-        r1.addView(new View(this), weighted(64));
-        r1.addView(remoteButton("▲", UP, true, "#24314F", 22), weighted(64));
-        r1.addView(new View(this), weighted(64));
+        r1.addView(new View(this), weighted(66));
+        r1.addView(remoteButton("▲", UP, true, "#FFFFFF", 22), weighted(66));
+        r1.addView(new View(this), weighted(66));
         LinearLayout r2 = row();
-        r2.addView(remoteButton("◀", LEFT, true, "#24314F", 22), weighted(64));
-        r2.addView(remoteButton("OK", OK, false, "#4A6FD1", 20), weighted(64));
-        r2.addView(remoteButton("▶", RIGHT, true, "#24314F", 22), weighted(64));
+        r2.addView(remoteButton("◀", LEFT, true, "#FFFFFF", 22), weighted(66));
+        r2.addView(remoteButton("OK", OK, false, "#F5A623", 20), weighted(66));
+        r2.addView(remoteButton("▶", RIGHT, true, "#FFFFFF", 22), weighted(66));
         LinearLayout r3 = row();
-        r3.addView(new View(this), weighted(64));
-        r3.addView(remoteButton("▼", DOWN, true, "#24314F", 22), weighted(64));
-        r3.addView(new View(this), weighted(64));
+        r3.addView(new View(this), weighted(66));
+        r3.addView(remoteButton("▼", DOWN, true, "#FFFFFF", 22), weighted(66));
+        r3.addView(new View(this), weighted(66));
         root.addView(r1);
         root.addView(r2);
         root.addView(r3);
-        root.addView(space(12));
+        root.addView(space(4));
 
-        LinearLayout bottom = row();
-        bottom.addView(remoteButton("↩ برگشت", BACK, false, "#3A3F55", 15), weighted(54));
-        bottom.addView(remoteButton("⌂ خانه", HOME, false, "#3A3F55", 15), weighted(54));
-        bottom.addView(remoteButton("☰ منو", MENU, false, "#3A3F55", 15), weighted(54));
-        root.addView(bottom);
+        LinearLayout backRow = row();
+        backRow.addView(remoteButton("↩", BACK, false, "#FFFFFF", 22), weighted(48));
+        backRow.addView(new View(this), weighted(48));
+        backRow.addView(remoteButton("EXIT", EXIT, false, "#FFFFFF", 15), weighted(48));
+        root.addView(backRow);
+        root.addView(space(10));
+
+        LinearLayout mid = row();
+        LinearLayout vol = column();
+        vol.addView(remoteButton("+\nVOL", VOL_UP, true, "#2E9E4F", 20), tall(78));
+        vol.addView(remoteButton("−", VOL_DN, true, "#2E9E4F", 26), tall(78));
+        LinearLayout centerCol = column();
+        centerCol.setGravity(Gravity.CENTER);
+        centerCol.addView(remoteButton("SOURCE", SOURCE, false, "#FFFFFF", 13), tall(60));
+        LinearLayout ch = column();
+        ch.addView(remoteButton("︿\nCH", CH_UP, true, "#2B4C7E", 20), tall(78));
+        ch.addView(remoteButton("﹀", CH_DN, true, "#2B4C7E", 26), tall(78));
+        mid.addView(vol, weightedWrap());
+        LinearLayout.LayoutParams cp = weightedWrap();
+        cp.gravity = Gravity.CENTER_VERTICAL;
+        mid.addView(centerCol, cp);
+        mid.addView(ch, weightedWrap());
+        mid.setGravity(Gravity.CENTER_VERTICAL);
+        root.addView(mid);
         root.addView(space(18));
 
         LinearLayout setupRow = row();
@@ -227,7 +241,7 @@ public class MainActivity extends Activity {
 
     // Order the wizard walks through (power last, so wrong guesses don't turn the TV off early).
     static final int[] WIZARD_ORDER = {VOL_UP, VOL_DN, MUTE, CH_UP, CH_DN, UP, DOWN, LEFT, RIGHT,
-            OK, BACK, HOME, MENU, POWER};
+            OK, BACK, EXIT, HOME, MENU, SOURCE, POWER};
     static final String[] EXPECT = {
             "تلویزیون باید خاموش (یا روشن) شود",
             "صدا باید قطع یا وصل شود",
@@ -243,7 +257,8 @@ public class MainActivity extends Activity {
             "باید صفحه اصلی (خانه) باز شود",
             "باید یک صفحه برگردد",
             "باید منو باز شود",
-            "باید منوی ورودی‌ها (HDMI / AV / TV) باز شود"};
+            "باید منوی ورودی‌ها (HDMI / AV / TV) باز شود",
+            "باید از منو یا برنامه بیرون بیاید (EXIT)"};
 
     private int wizStep = 0;
     private int[] candidates;
@@ -570,10 +585,18 @@ public class MainActivity extends Activity {
     private void styleButton(Button b, String color) {
         boolean accent = color.equals("#F5A623") || color.equals("#4A6FD1");
         boolean danger = color.equals("#D32F2F") || color.equals("#5A2A2A");
+        boolean green = color.equals("#2E9E4F");
+        boolean blue = color.equals("#2B4C7E");
         int radius = px(26);
 
         GradientDrawable normal, pressed;
-        if (accent || danger) {
+        if (green || blue) {
+            int c1 = Color.parseColor(green ? "#4CC36A" : "#4A72B0");
+            int c2 = Color.parseColor(green ? "#22863F" : "#22406E");
+            normal = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{c1, c2});
+            pressed = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{c2, c2});
+            b.setTextColor(Color.WHITE);
+        } else if (accent || danger) {
             int c1 = Color.parseColor(accent ? "#FFC247" : "#FF6B5E");
             int c2 = Color.parseColor(accent ? "#F29A0E" : "#E53935");
             normal = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{c1, c2});
@@ -597,12 +620,12 @@ public class MainActivity extends Activity {
         }
         normal.setCornerRadius(radius);
         pressed.setCornerRadius(radius);
-        normal.setStroke(px(1), Color.parseColor(accent || danger ? "#00FFFFFF" : "#FFFFFF"));
+        normal.setStroke(px(1), Color.parseColor(accent || danger || green || blue ? "#00FFFFFF" : "#FFFFFF"));
         StateListDrawable s = new StateListDrawable();
         s.addState(new int[]{android.R.attr.state_pressed}, pressed);
         s.addState(new int[]{}, normal);
         b.setBackground(s);
-        b.setElevation(px(accent || danger ? 8 : 5));
+        b.setElevation(px(accent || danger || green || blue ? 8 : 5));
     }
 
     private LinearLayout row() {
