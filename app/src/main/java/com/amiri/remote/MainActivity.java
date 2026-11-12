@@ -58,34 +58,17 @@ public class MainActivity extends Activity {
     private SharedPreferences prefs;
     private int set = 0;
     private TextView status;
-    private final Button[] setButtons = new Button[SET_NAMES.length];
     private final Handler handler = new Handler(Looper.getMainLooper());
     private final ExecutorService irThread = Executors.newSingleThreadExecutor();
     private float dp;
     private boolean hasIr;
-
-    // setup screen state
-    private int scanCode = 0;
-    private boolean scanning = false;
-    private TextView codeView, codeInfo;
-    private Button scanBtn;
-    private final Runnable scanStep = new Runnable() {
-        @Override
-        public void run() {
-            if (!scanning) return;
-            scanCode = (scanCode + 1) & 0xFF;
-            sendRaw(scanCode);
-            updateCodeView();
-            handler.postDelayed(this, 1500);
-        }
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         dp = getResources().getDisplayMetrics().density;
         prefs = getSharedPreferences("remote", MODE_PRIVATE);
-        set = Math.min(prefs.getInt("set", 0), SET_NAMES.length - 1);
+        set = 1; // only "code 2" (NEC header 0x20DF) works on this TV
         ir = (ConsumerIrManager) getSystemService(Context.CONSUMER_IR_SERVICE);
         hasIr = ir != null && ir.hasIrEmitter();
         getWindow().setStatusBarColor(Color.parseColor("#EDEFF2"));
@@ -95,7 +78,7 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
-        if (codeView != null) {
+        if (wizTitle != null) {
             showRemote();
         } else {
             super.onBackPressed();
@@ -144,10 +127,7 @@ public class MainActivity extends Activity {
     // ---------- Remote screen ----------
 
     private void showRemote() {
-        stopScan();
-        codeView = null;
-        codeInfo = null;
-        scanBtn = null;
+        wizTitle = null;
 
         LinearLayout root = page();
 
@@ -155,16 +135,13 @@ public class MainActivity extends Activity {
 
         status = new TextView(this);
         status.setText(hasIr
-                ? "اگر دکمه‌ای اشتباه کار کرد، پایین صفحه «⚙ تنظیم دکمه‌ها» را بزن."
+                ? "اگر دکمه‌ای اشتباه کار کرد، پایین صفحه «⚙ تنظیم دقیق دکمه‌ها» را بزن."
                 : "این گوشی فرستنده مادون‌قرمز (IR) ندارد");
         status.setTextColor(Color.parseColor(hasIr ? "#8A9099" : "#FF7070"));
         status.setTextSize(13);
         status.setGravity(Gravity.CENTER);
         status.setPadding(0, px(6), 0, px(12));
         root.addView(status);
-
-        root.addView(setSelector());
-        root.addView(space(14));
 
         LinearLayout powerRow = row();
         powerRow.addView(remoteButton("⏻  روشن / خاموش", POWER, false, "#D32F2F", 18), weighted(62));
@@ -212,172 +189,177 @@ public class MainActivity extends Activity {
         root.addView(space(18));
 
         LinearLayout setupRow = row();
-        Button setup = plainButton("⚙  تنظیم دکمه‌ها", "#F5A623", 16);
+        Button setup = plainButton("⚙  تنظیم دقیق دکمه‌ها", "#F5A623", 16);
                 setup.setOnClickListener(v -> showSetup());
         setupRow.addView(setup, weighted(52));
         root.addView(setupRow);
     }
 
-    private View setSelector() {
-        LinearLayout sets = row();
-        for (int i = 0; i < SET_NAMES.length; i++) {
-            final int idx = i;
-            Button b = plainButton(SET_NAMES[i], "#24314F", 14);
-            b.setOnClickListener(v -> {
-                set = idx;
-                prefs.edit().putInt("set", idx).apply();
-                refreshSetButtons();
-                v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
-                if (codeView != null) updateCodeView();
-            });
-            setButtons[i] = b;
-            sets.addView(b, weighted(44));
-        }
-        refreshSetButtons();
-        return sets;
-    }
+    // ---------- Setup wizard ----------
 
-    private void refreshSetButtons() {
-        for (int i = 0; i < setButtons.length; i++) {
-            if (setButtons[i] == null) continue;
-            boolean on = i == set;
-            styleButton(setButtons[i], on ? "#F5A623" : "#FFFFFF");
-        }
-    }
+    // Order the wizard walks through (power last, so wrong guesses don't turn the TV off early).
+    static final int[] WIZARD_ORDER = {VOL_UP, VOL_DN, MUTE, CH_UP, CH_DN, UP, DOWN, LEFT, RIGHT,
+            OK, BACK, HOME, MENU, SOURCE, POWER};
+    static final String[] EXPECT = {
+            "تلویزیون باید خاموش (یا روشن) شود",
+            "صدا باید قطع یا وصل شود",
+            "صدا باید زیاد شود",
+            "صدا باید کم شود",
+            "کانال باید یکی جلو برود",
+            "کانال باید یکی عقب برود",
+            "باید گزینه انتخاب شود (OK)",
+            "انتخاب در منو باید بالا برود",
+            "انتخاب در منو باید پایین برود",
+            "انتخاب در منو باید به چپ برود",
+            "انتخاب در منو باید به راست برود",
+            "باید صفحه اصلی (خانه) باز شود",
+            "باید یک صفحه برگردد",
+            "باید منو باز شود",
+            "باید منوی ورودی‌ها (HDMI / AV / TV) باز شود"};
 
-    // ---------- Setup screen ----------
+    private int wizStep = 0;
+    private int[] candidates;
+    private int candIdx = 0;
+    private TextView wizTitle, wizExpect, wizProgress, wizCode;
 
     private void showSetup() {
+        wizStep = 0;
         LinearLayout root = page();
-        root.addView(title("تنظیم دکمه‌ها"));
+        root.addView(title("تنظیم دقیق دکمه‌ها"));
 
         TextView help = new TextView(this);
-        help.setText("۱) کدی را انتخاب کن که تلویزیون با آن واکنش نشان می‌دهد.\n"
-                + "۲) با ◀ ▶ کدها را یکی‌یکی بفرست (یا اسکن خودکار).\n"
-                + "۳) هر وقت تلویزیون کاری کرد، پایین بزن که آن کار کدام دکمه است.");
+        help.setText("گوشی را رو به تلویزیون بگیر. برای هر دکمه یک کد فرستاده می‌شود.\n"
+                + "اگر تلویزیون همان کار درست را کرد «✔ درست شد» بزن،\n"
+                + "وگرنه «✘ نه، بعدی» بزن تا کد بعدی امتحان شود.");
         help.setTextColor(Color.parseColor("#8A9099"));
         help.setTextSize(13);
-        help.setPadding(0, px(6), 0, px(10));
+        help.setGravity(Gravity.CENTER);
+        help.setPadding(0, px(6), 0, px(14));
         root.addView(help);
 
-        root.addView(setSelector());
-        root.addView(space(10));
+        wizProgress = new TextView(this);
+        wizProgress.setTextColor(Color.parseColor("#E8920C"));
+        wizProgress.setTextSize(13);
+        wizProgress.setGravity(Gravity.CENTER);
+        root.addView(wizProgress);
 
-        codeView = new TextView(this);
-        codeView.setTextColor(Color.parseColor("#1F2329"));
-        codeView.setTextSize(38);
-        codeView.setTypeface(Typeface.DEFAULT_BOLD);
-        codeView.setGravity(Gravity.CENTER);
-        root.addView(codeView);
+        wizTitle = new TextView(this);
+        wizTitle.setTextColor(Color.parseColor("#1F2329"));
+        wizTitle.setTextSize(34);
+        wizTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        wizTitle.setGravity(Gravity.CENTER);
+        root.addView(wizTitle);
 
-        codeInfo = new TextView(this);
-        codeInfo.setTextColor(Color.parseColor("#E8920C"));
-        codeInfo.setTextSize(13);
-        codeInfo.setGravity(Gravity.CENTER);
-        codeInfo.setPadding(0, 0, 0, px(8));
-        root.addView(codeInfo);
+        wizExpect = new TextView(this);
+        wizExpect.setTextColor(Color.parseColor("#2B2F36"));
+        wizExpect.setTextSize(15);
+        wizExpect.setGravity(Gravity.CENTER);
+        root.addView(wizExpect);
+
+        wizCode = new TextView(this);
+        wizCode.setTextColor(Color.parseColor("#8A9099"));
+        wizCode.setTextSize(12);
+        wizCode.setGravity(Gravity.CENTER);
+        wizCode.setPadding(0, px(4), 0, px(12));
+        root.addView(wizCode);
+
+        LinearLayout yes = row();
+        yes.addView(actionButton("✔  درست شد", "#F5A623", v -> confirmStep()), weighted(64));
+        root.addView(yes);
+
+        LinearLayout no = row();
+        no.addView(actionButton("✘  نه، بعدی", "#FFFFFF", v -> nextCandidate(1)), weighted(60));
+        root.addView(no);
+
+        LinearLayout more = row();
+        more.addView(actionButton("◀ کد قبلی", "#FFFFFF", v -> nextCandidate(-1)), weighted(52));
+        more.addView(actionButton("📡 دوباره بفرست", "#FFFFFF", v -> sendRaw(candidates[candIdx])), weighted(52));
+        root.addView(more);
 
         LinearLayout nav = row();
-        nav.addView(actionButton("−10", "#24314F", v -> step(-10)), weighted(54));
-        nav.addView(actionButton("◀", "#24314F", v -> step(-1)), weighted(54));
-        nav.addView(actionButton("📡 ارسال", "#4A6FD1", v -> sendRaw(scanCode)), weighted(54));
-        nav.addView(actionButton("▶", "#24314F", v -> step(1)), weighted(54));
-        nav.addView(actionButton("+10", "#24314F", v -> step(10)), weighted(54));
+        nav.addView(actionButton("دکمه قبلی", "#FFFFFF", v -> goStep(wizStep - 1)), weighted(50));
+        nav.addView(actionButton("رد شو ⏭", "#FFFFFF", v -> goStep(wizStep + 1)), weighted(50));
         root.addView(nav);
-
-        LinearLayout scanRow = row();
-        scanBtn = actionButton("▶ اسکن خودکار", "#F5A623", v -> toggleScan());
-        scanRow.addView(scanBtn, weighted(50));
-        root.addView(scanRow);
-
-        TextView assignTitle = new TextView(this);
-        assignTitle.setText("این کد را بده به دکمه:");
-        assignTitle.setTextColor(Color.parseColor("#1F2329"));
-        assignTitle.setTextSize(15);
-        assignTitle.setPadding(0, px(14), 0, px(4));
-        root.addView(assignTitle);
-
-        LinearLayout line = null;
-        for (int k = 0; k < KEY_COUNT; k++) {
-            if (k % 3 == 0) {
-                line = row();
-                root.addView(line);
-            }
-            final int key = k;
-            line.addView(actionButton(KEY_NAMES[k], "#3A3F55", v -> assign(key)), weighted(50));
-        }
-        if (KEY_COUNT % 3 != 0) {
-            for (int f = KEY_COUNT % 3; f < 3; f++) line.addView(new View(this), weighted(50));
-        }
 
         root.addView(space(14));
         LinearLayout last = row();
-        last.addView(actionButton("پیش‌فرض این کد", "#5A2A2A", v -> resetSet()), weighted(50));
-        last.addView(actionButton("✔ برگشت به ریموت", "#F5A623", v -> showRemote()), weighted(50));
+        last.addView(actionButton("پاک کردن همه", "#D32F2F", v -> resetSet()), weighted(50));
+        last.addView(actionButton("برگشت به ریموت", "#FFFFFF", v -> showRemote()), weighted(50));
         root.addView(last);
 
-        updateCodeView();
+        goStep(0);
     }
 
-    private void step(int d) {
-        stopScan();
-        scanCode = (scanCode + d + 256) & 0xFF;
-        sendRaw(scanCode);
-        updateCodeView();
-    }
-
-    private void toggleScan() {
-        if (scanning) {
-            stopScan();
-            toast("اسکن متوقف شد. با ◀ ▶ و «ارسال» کد دقیق را پیدا کن.");
-        } else {
-            scanning = true;
-            if (scanBtn != null) {
-                scanBtn.setText("⏸ توقف اسکن");
-                styleButton(scanBtn, "#D32F2F");
-            }
-            sendRaw(scanCode);
-            updateCodeView();
-            handler.postDelayed(scanStep, 1500);
+    private void goStep(int step) {
+        if (step < 0) step = 0;
+        if (step >= WIZARD_ORDER.length) {
+            toast("همه دکمه‌ها تنظیم شد ✔");
+            showRemote();
+            return;
         }
-    }
-
-    private void stopScan() {
-        scanning = false;
-        handler.removeCallbacks(scanStep);
-        if (scanBtn != null) {
-            scanBtn.setText("▶ اسکن خودکار");
-            styleButton(scanBtn, "#F5A623");
+        wizStep = step;
+        int key = WIZARD_ORDER[step];
+        candidates = buildCandidates(key);
+        candIdx = 0;
+        wizProgress.setText("دکمه " + (step + 1) + " از " + WIZARD_ORDER.length
+                + (prefs.getBoolean("ok_k" + key, false) ? "  (قبلاً تأیید شده)" : ""));
+        wizTitle.setText(KEY_NAMES[key]);
+        wizExpect.setText(EXPECT[key]);
+        if (key == POWER) {
+            wizExpect.setText(EXPECT[key] + "\n(اگر خاموش شد، «✔» بزن و با همین دکمه روشنش کن)");
         }
+        sendCandidate();
     }
 
-    private void assign(int key) {
-        stopScan();
-        prefs.edit().putInt("s" + set + "_k" + key, scanCode).apply();
-        toast("کد " + scanCode + " به «" + KEY_NAMES[key] + "» داده شد ✔");
-        updateCodeView();
+    /** Current code first, then the codes from every known table, then all other codes. */
+    private int[] buildCandidates(int key) {
+        java.util.LinkedHashSet<Integer> list = new java.util.LinkedHashSet<>();
+        java.util.HashSet<Integer> taken = new java.util.HashSet<>();
+        for (int k = 0; k < KEY_COUNT; k++) {
+            if (k != key && prefs.getBoolean("ok_k" + k, false)) taken.add(codeFor(k));
+        }
+        list.add(codeFor(key));
+        list.add(CODES[1][key]);
+        for (int[] row : CODES) list.add(row[key]);
+        for (int[] row : CODES) for (int c : row) list.add(c);
+        for (int c = 0; c < 256; c++) list.add(c);
+        java.util.ArrayList<Integer> out = new java.util.ArrayList<>();
+        for (int c : list) if (!taken.contains(c) || c == codeFor(key)) out.add(c);
+        int[] arr = new int[out.size()];
+        for (int i = 0; i < arr.length; i++) arr[i] = out.get(i);
+        return arr;
+    }
+
+    private void nextCandidate(int d) {
+        candIdx = (candIdx + d + candidates.length) % candidates.length;
+        sendCandidate();
+    }
+
+    private void sendCandidate() {
+        int c = candidates[candIdx];
+        wizCode.setText("کد " + c + "   •   امتحان " + (candIdx + 1) + " از " + candidates.length);
+        sendRaw(c);
+    }
+
+    private void confirmStep() {
+        int key = WIZARD_ORDER[wizStep];
+        prefs.edit()
+                .putInt("s" + set + "_k" + key, candidates[candIdx])
+                .putBoolean("ok_k" + key, true)
+                .apply();
+        toast("«" + KEY_NAMES[key] + "» ذخیره شد ✔");
+        goStep(wizStep + 1);
     }
 
     private void resetSet() {
-        stopScan();
         SharedPreferences.Editor e = prefs.edit();
-        for (int k = 0; k < KEY_COUNT; k++) e.remove("s" + set + "_k" + k);
-        e.apply();
-        toast("دکمه‌های " + SET_NAMES[set] + " به حالت اول برگشت");
-        updateCodeView();
-    }
-
-    private void updateCodeView() {
-        if (codeView == null) return;
-        codeView.setText(String.valueOf(scanCode));
-        StringBuilder sb = new StringBuilder();
         for (int k = 0; k < KEY_COUNT; k++) {
-            if (codeFor(k) == scanCode) {
-                if (sb.length() > 0) sb.append("، ");
-                sb.append(KEY_NAMES[k]);
-            }
+            e.remove("s" + set + "_k" + k);
+            e.remove("ok_k" + k);
         }
-        codeInfo.setText(sb.length() == 0 ? "(به هیچ دکمه‌ای وصل نیست)" : "الان مال: " + sb);
+        e.apply();
+        toast("همه دکمه‌ها به حالت اول برگشت");
+        goStep(0);
     }
 
     // ---------- UI helpers ----------
