@@ -1,6 +1,18 @@
 package com.amiri.remote;
 
 import android.app.Activity;
+import android.app.DownloadManager;
+import android.content.BroadcastReceiver;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.net.Uri;
+import android.os.Environment;
+import android.provider.Settings;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.graphics.Color;
@@ -143,6 +155,12 @@ public class MainActivity extends Activity {
         status.setPadding(0, px(6), 0, px(12));
         root.addView(status);
 
+        updateBanner = actionButton("⬇  نسخه جدید آماده است — نصب کن", "#F5A623", v -> startUpdate());
+        updateBanner.setVisibility(View.GONE);
+        LinearLayout bannerRow = row();
+        bannerRow.addView(updateBanner, weighted(56));
+        root.addView(bannerRow);
+
         LinearLayout powerRow = row();
         powerRow.addView(remoteButton("⏻  روشن / خاموش", POWER, false, "#D32F2F", 18), weighted(62));
         root.addView(powerRow);
@@ -193,6 +211,17 @@ public class MainActivity extends Activity {
                 setup.setOnClickListener(v -> showSetup());
         setupRow.addView(setup, weighted(52));
         root.addView(setupRow);
+
+        TextView ver = new TextView(this);
+        ver.setText("نسخه " + myVersionName() + "   •   🔄 بررسی آپدیت");
+        ver.setTextColor(Color.parseColor("#8A9099"));
+        ver.setTextSize(13);
+        ver.setGravity(Gravity.CENTER);
+        ver.setPadding(0, px(14), 0, px(6));
+        ver.setOnClickListener(v -> checkUpdate(true));
+        root.addView(ver);
+
+        checkUpdate(false);
     }
 
     // ---------- Setup wizard ----------
@@ -360,6 +389,103 @@ public class MainActivity extends Activity {
         e.apply();
         toast("همه دکمه‌ها به حالت اول برگشت");
         goStep(0);
+    }
+
+    // ---------- In-app update ----------
+
+    static final String UPDATE_BASE =
+            "https://raw.githubusercontent.com/alijojo2122joon-jpg/amiri-remote/apk/";
+    private Button updateBanner;
+    private long downloadId = -1;
+    private BroadcastReceiver downloadDone;
+
+    private int myVersionCode() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionCode;
+        } catch (Exception e) {
+            return 0;
+        }
+    }
+
+    private String myVersionName() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "?";
+        }
+    }
+
+    private void checkUpdate(boolean manual) {
+        if (manual) toast("در حال بررسی آپدیت…");
+        new Thread(() -> {
+            int remote = -1;
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL(
+                        UPDATE_BASE + "version.txt?t=" + System.currentTimeMillis()).openConnection();
+                c.setConnectTimeout(8000);
+                c.setReadTimeout(8000);
+                c.setUseCaches(false);
+                BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream()));
+                remote = Integer.parseInt(r.readLine().trim());
+                r.close();
+            } catch (Exception ignored) {
+            }
+            final int rv = remote;
+            handler.post(() -> {
+                if (rv > myVersionCode()) {
+                    if (updateBanner != null) updateBanner.setVisibility(View.VISIBLE);
+                    if (manual) toast("نسخه جدید پیدا شد");
+                } else if (manual) {
+                    toast(rv < 0 ? "اینترنت وصل نیست یا سرور جواب نداد" : "اپ به‌روز است ✔");
+                }
+            });
+        }).start();
+    }
+
+    private void startUpdate() {
+        if (Build.VERSION.SDK_INT >= 26 && !getPackageManager().canRequestPackageInstalls()) {
+            toast("اجازه «نصب برنامه‌های ناشناس» را برای ریموت امیری روشن کن و برگرد");
+            startActivity(new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES,
+                    Uri.parse("package:" + getPackageName())));
+            return;
+        }
+        File old = new File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "AmiriRemote.apk");
+        if (old.exists()) old.delete();
+
+        DownloadManager dm = (DownloadManager) getSystemService(DOWNLOAD_SERVICE);
+        DownloadManager.Request req = new DownloadManager.Request(
+                Uri.parse(UPDATE_BASE + "AmiriRemote.apk?t=" + System.currentTimeMillis()));
+        req.setTitle("آپدیت ریموت امیری");
+        req.setMimeType("application/vnd.android.package-archive");
+        req.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE);
+        req.setDestinationInExternalFilesDir(this, Environment.DIRECTORY_DOWNLOADS, "AmiriRemote.apk");
+
+        if (downloadDone == null) {
+            downloadDone = new BroadcastReceiver() {
+                @Override
+                public void onReceive(Context ctx, Intent intent) {
+                    long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1);
+                    if (id != downloadId) return;
+                    Uri apk = dm.getUriForDownloadedFile(id);
+                    if (apk == null) {
+                        toast("دانلود نشد، دوباره امتحان کن");
+                        return;
+                    }
+                    Intent install = new Intent(Intent.ACTION_VIEW);
+                    install.setDataAndType(apk, "application/vnd.android.package-archive");
+                    install.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(install);
+                }
+            };
+            IntentFilter f = new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE);
+            if (Build.VERSION.SDK_INT >= 33) {
+                registerReceiver(downloadDone, f, Context.RECEIVER_EXPORTED);
+            } else {
+                registerReceiver(downloadDone, f);
+            }
+        }
+        downloadId = dm.enqueue(req);
+        toast("در حال دانلود آپدیت…");
     }
 
     // ---------- UI helpers ----------
@@ -530,6 +656,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onDestroy() {
         handler.removeCallbacksAndMessages(null);
+        if (downloadDone != null) {
+            try { unregisterReceiver(downloadDone); } catch (Exception ignored) { }
+        }
         irThread.shutdownNow();
         super.onDestroy();
     }

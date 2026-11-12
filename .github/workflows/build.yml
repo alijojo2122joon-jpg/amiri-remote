@@ -25,10 +25,11 @@ jobs:
       - name: Publish APK to apk branch
         run: |
           mkdir out && cp app/build/outputs/apk/debug/app-debug.apk out/AmiriRemote.apk
+          grep -oP 'versionCode \K[0-9]+' app/build.gradle > out/version.txt
           cd out
           git init -q -b apk
           git config user.name "github-actions"
           git config user.email "actions@github.com"
-          git add AmiriRemote.apk
+          git add AmiriRemote.apk version.txt
           git commit -qm "APK build"
           git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" apk
