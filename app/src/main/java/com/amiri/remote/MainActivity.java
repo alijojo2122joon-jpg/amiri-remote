@@ -60,7 +60,7 @@ public class MainActivity extends Activity {
     static final int[][] CODES = {
             // POWER MUTE VOL+ VOL- CH+  CH-  OK   UP   DOWN LEFT RIGHT HOME BACK MENU SOURCE
             {0x00, 0x01, 0x48, 0x49, 0x4A, 0x4B, 0x10, 0x13, 0x14, 0x11, 0x12, 0x64, 0x15, 0x40, 0x41},
-            {0x52, 0x53, 0x03, 0x41, 0x02, 0x09, 0x4A, 0x47, 0x4D, 0x49, 0x4B, 0x0F, 0x1E, 0x4E, 0x0B},
+            {0x0B, 0x53, 0x03, 0x41, 0x02, 0x09, 0x4A, 0x47, 0x4D, 0x49, 0x4B, 0x0F, 0x1E, 0x4E, 0x52},
             {2, 15, 7, 11, 18, 16, 104, 96, 97, 101, 98, 121, 88, 26, 1},
             {0x45, 0x47, 0x15, 0x07, 0x09, 0x16, 0x1C, 0x18, 0x52, 0x08, 0x5A, 0x44, 0x43, 0x40, 0x46},
             {0x08, 0x09, 0x02, 0x03, 0x00, 0x01, 0x44, 0x40, 0x41, 0x07, 0x06, 0x7C, 0x28, 0x43, 0x0B},
@@ -171,8 +171,7 @@ public class MainActivity extends Activity {
         vol.addView(remoteButton("صدا +", VOL_UP, true, "#2E4A7D", 18), tall(70));
         vol.addView(remoteButton("صدا −", VOL_DN, true, "#2E4A7D", 18), tall(70));
         LinearLayout centerCol = column();
-        centerCol.addView(remoteButton("🔇 بی‌صدا", MUTE, false, "#3A3F55", 14), tall(70));
-        centerCol.addView(remoteButton("⇄ ورودی", SOURCE, false, "#3A3F55", 14), tall(70));
+        centerCol.addView(remoteButton("🔇\nبی‌صدا", MUTE, false, "#3A3F55", 15), tall(154));
         LinearLayout ch = column();
         ch.addView(remoteButton("کانال +", CH_UP, true, "#2E7D5B", 18), tall(70));
         ch.addView(remoteButton("کانال −", CH_DN, true, "#2E7D5B", 18), tall(70));
@@ -228,7 +227,7 @@ public class MainActivity extends Activity {
 
     // Order the wizard walks through (power last, so wrong guesses don't turn the TV off early).
     static final int[] WIZARD_ORDER = {VOL_UP, VOL_DN, MUTE, CH_UP, CH_DN, UP, DOWN, LEFT, RIGHT,
-            OK, BACK, HOME, MENU, SOURCE, POWER};
+            OK, BACK, HOME, MENU, POWER};
     static final String[] EXPECT = {
             "تلویزیون باید خاموش (یا روشن) شود",
             "صدا باید قطع یا وصل شود",
