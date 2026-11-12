@@ -188,56 +188,57 @@ public class MainActivity extends Activity {
         bannerRow.addView(updateBanner, weighted(56));
         root.addView(bannerRow);
 
+        circleMode = true;
         // Layout copied from the physical RM-014S+ remote.
         LinearLayout top = row();
-        top.addView(remoteButton("⏻", POWER, false, "#D32F2F", 24), weighted(58));
-        top.addView(new View(this), weighted(58));
-        top.addView(remoteButton("🔇", MUTE, false, "#2E9E4F", 22), weighted(58));
+        top.addView(remoteButton("⏻", POWER, false, "#D32F2F", 24), circ(58));
+        top.addView(new View(this), circ(58));
+        top.addView(remoteButton("🔇", MUTE, false, "#2E9E4F", 22), circ(58));
         root.addView(top);
         root.addView(space(8));
 
         LinearLayout menuRow = row();
-        menuRow.addView(remoteButton("MENU", MENU, false, "#FFFFFF", 15), weighted(48));
-        menuRow.addView(new View(this), weighted(48));
-        menuRow.addView(rawButton("⇆ قبلی", 21, 15), weighted(48));
+        menuRow.addView(remoteButton("MENU", MENU, false, "#FFFFFF", 15), circ(48));
+        menuRow.addView(new View(this), circ(48));
+        menuRow.addView(rawButton("⇆ قبلی", 21, 15), circ(48));
         root.addView(menuRow);
         root.addView(space(4));
 
         LinearLayout r1 = row();
-        r1.addView(new View(this), weighted(66));
-        r1.addView(remoteButton("▲", UP, true, "#FFFFFF", 22), weighted(66));
-        r1.addView(new View(this), weighted(66));
+        r1.addView(new View(this), circ(66));
+        r1.addView(remoteButton("▲", UP, true, "#FFFFFF", 22), circ(66));
+        r1.addView(new View(this), circ(66));
         LinearLayout r2 = row();
-        r2.addView(new View(this), weighted(66));
-        r2.addView(remoteButton("OK", OK, false, "#F5A623", 20), weighted(66));
-        r2.addView(remoteButton("▶", RIGHT, true, "#FFFFFF", 22), weighted(66));
+        r2.addView(new View(this), circ(66));
+        r2.addView(remoteButton("OK", OK, false, "#F5A623", 20), circ(66));
+        r2.addView(remoteButton("▶", RIGHT, true, "#FFFFFF", 22), circ(66));
         LinearLayout r3 = row();
-        r3.addView(new View(this), weighted(66));
-        r3.addView(remoteButton("▼", DOWN, true, "#FFFFFF", 22), weighted(66));
-        r3.addView(new View(this), weighted(66));
+        r3.addView(new View(this), circ(66));
+        r3.addView(remoteButton("▼", DOWN, true, "#FFFFFF", 22), circ(66));
+        r3.addView(new View(this), circ(66));
         root.addView(r1);
         root.addView(r2);
         root.addView(r3);
         root.addView(space(4));
 
         LinearLayout backRow = row();
-        backRow.addView(remoteButton("🖱 موس", MOUSE, false, "#FFFFFF", 15), weighted(48));
-        backRow.addView(new View(this), weighted(48));
-        backRow.addView(remoteButton("EXIT", EXIT, false, "#FFFFFF", 15), weighted(48));
+        backRow.addView(remoteButton("🖱 موس", MOUSE, false, "#FFFFFF", 15), circ(48));
+        backRow.addView(new View(this), circ(48));
+        backRow.addView(remoteButton("EXIT", EXIT, false, "#FFFFFF", 15), circ(48));
         root.addView(backRow);
         root.addView(space(10));
 
         LinearLayout mid = row();
         LinearLayout vol = column();
-        vol.addView(remoteButton("+\nVOL", VOL_UP, true, "#2E9E4F", 20), tall(78));
-        vol.addView(remoteButton("−", VOL_DN, true, "#2E9E4F", 26), tall(78));
+        vol.addView(remoteButton("+\nVOL", VOL_UP, true, "#2E9E4F", 20), circ(78));
+        vol.addView(remoteButton("−", VOL_DN, true, "#2E9E4F", 26), circ(78));
         LinearLayout centerCol = column();
         centerCol.setGravity(Gravity.CENTER);
-        centerCol.addView(remoteButton("SOURCE", SOURCE, false, "#FFFFFF", 13), tall(60));
-        centerCol.addView(remoteButton("😴 خواب", SLEEP, false, "#FFFFFF", 13), tall(60));
+        centerCol.addView(remoteButton("SOURCE", SOURCE, false, "#FFFFFF", 13), circ(60));
+        centerCol.addView(remoteButton("😴 خواب", SLEEP, false, "#FFFFFF", 13), circ(60));
         LinearLayout ch = column();
-        ch.addView(remoteButton("︿\nCH", CH_UP, true, "#2B4C7E", 20), tall(78));
-        ch.addView(remoteButton("﹀", CH_DN, true, "#2B4C7E", 26), tall(78));
+        ch.addView(remoteButton("︿\nCH", CH_UP, true, "#2B4C7E", 20), circ(78));
+        ch.addView(remoteButton("﹀", CH_DN, true, "#2B4C7E", 26), circ(78));
         mid.addView(vol, weightedWrap());
         LinearLayout.LayoutParams cp = weightedWrap();
         cp.gravity = Gravity.CENTER_VERTICAL;
@@ -260,33 +261,35 @@ public class MainActivity extends Activity {
             LinearLayout nr = row();
             for (int c = 0; c < 3; c++) {
                 int n = r * 3 + c + 1;
-                nr.addView(rawButton(String.valueOf(n), digitCode(n), 20), weighted(52));
+                nr.addView(rawButton(String.valueOf(n), digitCode(n), 20), circ(52));
             }
             root.addView(nr);
         }
         LinearLayout zr = row();
-        zr.addView(new View(this), weighted(52));
-        zr.addView(rawButton("0", digitCode(0), 20), weighted(52));
-        zr.addView(new View(this), weighted(52));
+        zr.addView(new View(this), circ(52));
+        zr.addView(rawButton("0", digitCode(0), 20), circ(52));
+        zr.addView(new View(this), circ(52));
         root.addView(zr);
         root.addView(space(8));
 
         LinearLayout e1 = row();
-        e1.addView(rawButton("EPG", 3, 14), weighted(50));
-        e1.addView(rawButton("INFO", 14, 14), weighted(50));
-        e1.addView(rawButton("FAV ⭐", 80, 14), weighted(50));
+        e1.addView(rawButton("EPG", 3, 14), circ(50));
+        e1.addView(rawButton("INFO", 14, 14), circ(50));
+        e1.addView(rawButton("FAV ⭐", 80, 14), circ(50));
         root.addView(e1);
         LinearLayout e2 = row();
-        e2.addView(rawButton("AUDIO", 89, 14), weighted(50));
-        e2.addView(rawButton("SIZE", 6, 14), weighted(50));
-        e2.addView(rawButton("S.MODE 🔊", 81, 13), weighted(50));
+        e2.addView(rawButton("AUDIO", 89, 14), circ(50));
+        e2.addView(rawButton("SIZE", 6, 14), circ(50));
+        e2.addView(rawButton("S.MODE", 81, 12), circ(50));
         root.addView(e2);
         LinearLayout e3 = row();
-        e3.addView(rawButton("🌐 وب", 91, 14), weighted(50));
-        e3.addView(rawButton("3D", 0, 14), weighted(50));
-        e3.addView(rawButton("USB ▶", 8, 14), weighted(50));
+        e3.addView(rawButton("🌐 وب", 91, 14), circ(50));
+        e3.addView(rawButton("3D", 0, 14), circ(50));
+        e3.addView(rawButton("USB ▶", 8, 14), circ(50));
         root.addView(e3);
         root.addView(space(18));
+
+        circleMode = false;
 
         LinearLayout setupRow = row();
         Button setup = plainButton("⚙  پیدا کردن کد دکمه‌ها (یک بار)", "#F5A623", 16);
@@ -727,7 +730,8 @@ public class MainActivity extends Activity {
         b.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
         b.setStateListAnimator(null);
         b.setPadding(px(4), 0, px(4), 0);
-        styleButton(b, color);
+        if (circleMode) styleCircle(b, color);
+        else styleButton(b, color);
         return b;
     }
 
@@ -736,6 +740,102 @@ public class MainActivity extends Activity {
      * accent (or the red power button) gets a warm glowing fill.
      * Any other colour passed in is treated as a normal white button.
      */
+    private boolean circleMode = false;
+
+    /** Square, centred params so a button is a perfect circle. */
+    private LinearLayout.LayoutParams circ(int sizeDp) {
+        int d = px(Math.max(sizeDp, 72));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(d, d);
+        lp.setMargins(px(9), px(7), px(9), px(7));
+        lp.gravity = Gravity.CENTER;
+        return lp;
+    }
+
+    /**
+     * Infographic look: white round button with a soft shadow and a thin
+     * coloured arc around it (red power, green volume, blue channel,
+     * orange OK, soft violet for everything else).
+     */
+    private void styleCircle(Button b, String color) {
+        String ring;
+        int text;
+        if (color.equals("#D32F2F")) { ring = "#EF5350"; text = Color.parseColor("#E53935"); }
+        else if (color.equals("#2E9E4F")) { ring = "#43B26B"; text = Color.parseColor("#2E8B57"); }
+        else if (color.equals("#2B4C7E")) { ring = "#5B7BC4"; text = Color.parseColor("#3D5A99"); }
+        else if (color.equals("#F5A623")) { ring = "#F5A623"; text = Color.parseColor("#E08A00"); }
+        else { ring = "#9C8FD6"; text = Color.parseColor("#4A4F5A"); }
+        final int ringColor = Color.parseColor(ring);
+        final float inset = px(7);
+        final float stroke = px(3);
+
+        android.graphics.drawable.Drawable normal = new RingDrawable(ringColor, inset, stroke, false);
+        android.graphics.drawable.Drawable pressed = new RingDrawable(ringColor, inset, stroke, true);
+        StateListDrawable s = new StateListDrawable();
+        s.addState(new int[]{android.R.attr.state_pressed}, pressed);
+        s.addState(new int[]{}, normal);
+        b.setBackground(s);
+        b.setTextColor(text);
+        b.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override
+            public void getOutline(View v, android.graphics.Outline o) {
+                int i = Math.round(inset);
+                o.setOval(i, i, v.getWidth() - i, v.getHeight() - i);
+            }
+        });
+        if (Build.VERSION.SDK_INT >= 28) {
+            b.setOutlineAmbientShadowColor(Color.parseColor("#7A8294"));
+            b.setOutlineSpotShadowColor(Color.parseColor("#7A8294"));
+        }
+        b.setElevation(px(7));
+    }
+
+    /** Arc ring + white disc, drawn by hand. */
+    static class RingDrawable extends android.graphics.drawable.Drawable {
+        private final android.graphics.Paint arc = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Paint faint = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Paint disc = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Paint edge = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final float inset, stroke;
+        private final boolean pressed;
+
+        RingDrawable(int color, float inset, float stroke, boolean pressed) {
+            this.inset = inset;
+            this.stroke = stroke;
+            this.pressed = pressed;
+            arc.setStyle(android.graphics.Paint.Style.STROKE);
+            arc.setStrokeWidth(stroke);
+            arc.setStrokeCap(android.graphics.Paint.Cap.ROUND);
+            arc.setColor(color);
+            faint.setStyle(android.graphics.Paint.Style.STROKE);
+            faint.setStrokeWidth(stroke * 0.5f);
+            faint.setColor(Color.parseColor("#DADDE3"));
+            edge.setStyle(android.graphics.Paint.Style.STROKE);
+            edge.setStrokeWidth(stroke * 0.5f);
+            edge.setColor(Color.parseColor("#E9EBEF"));
+        }
+
+        @Override
+        public void draw(android.graphics.Canvas c) {
+            android.graphics.Rect r = getBounds();
+            float half = stroke / 2f;
+            android.graphics.RectF outer = new android.graphics.RectF(r.left + half, r.top + half, r.right - half, r.bottom - half);
+            c.drawArc(outer, 0, 360, false, faint);
+            c.drawArc(outer, 100, pressed ? 300 : 200, false, arc);
+            float cx = r.exactCenterX(), cy = r.exactCenterY();
+            float rad = Math.min(r.width(), r.height()) / 2f - inset;
+            disc.setShader(new android.graphics.LinearGradient(cx, cy - rad, cx, cy + rad,
+                    pressed ? Color.parseColor("#E4E6EA") : Color.parseColor("#FFFFFF"),
+                    pressed ? Color.parseColor("#D8DBE0") : Color.parseColor("#EEF0F3"),
+                    android.graphics.Shader.TileMode.CLAMP));
+            c.drawCircle(cx, cy, rad, disc);
+            c.drawCircle(cx, cy, rad - edge.getStrokeWidth(), edge);
+        }
+
+        @Override public void setAlpha(int a) { }
+        @Override public void setColorFilter(android.graphics.ColorFilter f) { }
+        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+    }
+
     private void styleButton(Button b, String color) {
         boolean accent = color.equals("#F5A623") || color.equals("#4A6FD1");
         boolean danger = color.equals("#D32F2F") || color.equals("#5A2A2A");
@@ -786,6 +886,7 @@ public class MainActivity extends Activity {
         LinearLayout l = new LinearLayout(this);
         l.setOrientation(LinearLayout.HORIZONTAL);
         l.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
+        l.setGravity(Gravity.CENTER);
         return l;
     }
 
