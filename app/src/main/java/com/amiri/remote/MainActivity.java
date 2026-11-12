@@ -60,7 +60,7 @@ public class MainActivity extends Activity {
     static final int[][] CODES = {
             // POWER MUTE VOL+ VOL- CH+  CH-  OK   UP   DOWN LEFT RIGHT HOME BACK MENU SOURCE
             {0x00, 0x01, 0x48, 0x49, 0x4A, 0x4B, 0x10, 0x13, 0x14, 0x11, 0x12, 0x64, 0x15, 0x40, 0x41, 0x1C},
-            {0x0B, 0x0D, 0x03, 0x41, 0x02, 0x09, 0x4A, 0x47, 0x4D, 0x49, 0x4B, 0x0F, 0x1E, 0x4E, 0x52, 0x5B},
+            {0x0B, -1, 0x03, 0x41, 0x02, 0x09, 0x4A, 0x47, 0x4D, 0x49, -1, 0x0F, 0x1E, 0x4E, 0x52, 0x4B},
             {2, 15, 7, 11, 18, 16, 104, 96, 97, 101, 98, 121, 88, 26, 1, 45},
             {0x45, 0x47, 0x15, 0x07, 0x09, 0x16, 0x1C, 0x18, 0x52, 0x08, 0x5A, 0x44, 0x43, 0x40, 0x46, 0x4A},
             {0x08, 0x09, 0x02, 0x03, 0x00, 0x01, 0x44, 0x40, 0x41, 0x07, 0x06, 0x7C, 0x28, 0x43, 0x0B, 0x5B},
@@ -85,6 +85,13 @@ public class MainActivity extends Activity {
         hasIr = ir != null && ir.hasIrEmitter();
         getWindow().setStatusBarColor(Color.parseColor("#EDEFF2"));
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+        int[][] known = {{POWER, 0x0B}, {CH_UP, 0x02}, {CH_DN, 0x09}, {EXIT, 0x4B}};
+        SharedPreferences.Editor ke = prefs.edit();
+        for (int[] kv : known) {
+            ke.putInt("s" + set + "_k" + kv[0], kv[1]).putBoolean("ok_k" + kv[0], true);
+        }
+        if (prefs.getInt("s" + set + "_k" + RIGHT, -2) == 0x4B) ke.remove("s" + set + "_k" + RIGHT).remove("ok_k" + RIGHT);
+        ke.apply();
         if (prefs.getInt("s" + set + "_k" + MUTE, -1) == 0x53) {
             prefs.edit().remove("s" + set + "_k" + MUTE).remove("ok_k" + MUTE).apply();
         }
@@ -126,7 +133,12 @@ public class MainActivity extends Activity {
     }
 
     private void send(int key) {
-        sendRaw(codeFor(key));
+        int c = codeFor(key);
+        if (c < 0) {
+            toast("کد «" + KEY_NAMES[key] + "» هنوز پیدا نشده");
+            return;
+        }
+        sendRaw(c);
     }
 
     private void sendRaw(int cmd) {
