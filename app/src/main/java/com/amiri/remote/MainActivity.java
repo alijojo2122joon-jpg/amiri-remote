@@ -60,7 +60,7 @@ public class MainActivity extends Activity {
     static final int[][] CODES = {
             // POWER MUTE VOL+ VOL- CH+  CH-  OK   UP   DOWN LEFT RIGHT HOME BACK MENU SOURCE
             {0x00, 0x01, 0x48, 0x49, 0x4A, 0x4B, 0x10, 0x13, 0x14, 0x11, 0x12, 0x64, 0x15, 0x40, 0x41, 0x1C, 0x53, 0x10},
-            {11, 20, 10, -1, 2, 9, -1, -1, -1, -1, -1, -1, -1, -1, 27, 75, 83, 16},
+            {11, 20, 10, 64, 2, 9, 88, 85, 90, -1, 22, -1, -1, 78, 27, 75, 83, 16},
             {2, 15, 7, 11, 18, 16, 104, 96, 97, 101, 98, 121, 88, 26, 1, 45, 0x53, 0x10},
             {0x45, 0x47, 0x15, 0x07, 0x09, 0x16, 0x1C, 0x18, 0x52, 0x08, 0x5A, 0x44, 0x43, 0x40, 0x46, 0x4A, 0x53, 0x10},
             {0x08, 0x09, 0x02, 0x03, 0x00, 0x01, 0x44, 0x40, 0x41, 0x07, 0x06, 0x7C, 0x28, 0x43, 0x0B, 0x5B, 0x53, 0x10},
@@ -85,7 +85,7 @@ public class MainActivity extends Activity {
         hasIr = ir != null && ir.hasIrEmitter();
         getWindow().setStatusBarColor(Color.parseColor("#EDEFF2"));
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-        int[][] known = {{POWER, 11}, {CH_UP, 2}, {CH_DN, 9}, {VOL_UP, 10}, {MUTE, 20}, {SOURCE, 27}, {EXIT, 75}, {SLEEP, 83}, {MOUSE, 16}};
+        int[][] known = {{POWER, 11}, {CH_UP, 2}, {CH_DN, 9}, {VOL_UP, 10}, {VOL_DN, 64}, {MUTE, 20}, {OK, 88}, {UP, 85}, {DOWN, 90}, {RIGHT, 22}, {MENU, 78}, {SOURCE, 27}, {EXIT, 75}, {SLEEP, 83}, {MOUSE, 16}};
         SharedPreferences.Editor ke = prefs.edit();
         for (int[] kv : known) {
             ke.putInt("s" + set + "_k" + kv[0], kv[1]).putBoolean("ok_k" + kv[0], true);
@@ -362,9 +362,10 @@ public class MainActivity extends Activity {
         updateSweepView();
     }
 
-    // Codes that do something else on this TV (EPG 3, size 6, info 14, digit3 15,
-    // picture mode 22, digit7 24, digit4 30, sleep 83) - skipped while sweeping.
-    static final int[] OTHER_FUNCS = {3, 6, 14, 15, 22, 24, 30, 83};
+    // Codes that do something else on this TV - skipped while sweeping:
+    // EPG 3, size 6, info 14, digit3 15, digit7 24, digit4 30, digit2 67, digit8 69,
+    // fav 80, sound mode 81, sleep 83, digit0 86, audio 89, web 91.
+    static final int[] OTHER_FUNCS = {3, 6, 14, 15, 24, 30, 67, 69, 80, 81, 83, 86, 89, 91};
 
     /** Codes already confirmed for a key are skipped while sweeping. */
     private boolean isTaken(int code) {
