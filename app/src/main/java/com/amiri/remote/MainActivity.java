@@ -47,23 +47,23 @@ public class MainActivity extends Activity {
 
     static final int POWER = 0, MUTE = 1, VOL_UP = 2, VOL_DN = 3, CH_UP = 4, CH_DN = 5,
             OK = 6, UP = 7, DOWN = 8, LEFT = 9, RIGHT = 10, HOME = 11, BACK = 12, MENU = 13,
-            SOURCE = 14, EXIT = 15, SLEEP = 16;
-    static final int KEY_COUNT = 17;
+            SOURCE = 14, EXIT = 15, SLEEP = 16, MOUSE = 17;
+    static final int KEY_COUNT = 18;
 
     static final String[] KEY_NAMES = {
             "روشن/خاموش", "بی‌صدا", "صدا +", "صدا −", "کانال +", "کانال −",
-            "OK", "بالا ▲", "پایین ▼", "چپ ◀", "راست ▶", "خانه", "برگشت", "منو", "ورودی (Source)", "خروج (EXIT)", "تایمر خواب"};
+            "OK", "بالا ▲", "پایین ▼", "چپ ◀", "راست ▶", "خانه", "برگشت", "منو", "ورودی (Source)", "خروج (EXIT)", "تایمر خواب", "موس"};
 
     static final String[] SET_NAMES = {"کد ۱", "کد ۲", "کد ۳", "کد ۴", "کد ۵"};
     static final int[][] ADDR = {{0x00, 0xBF}, {0x20, 0xDF}, {0x07, 0x07}, {0x00, 0xFF}, {0x04, 0xFB}};
     static final boolean[] SAMSUNG = {false, false, true, false, false};
     static final int[][] CODES = {
             // POWER MUTE VOL+ VOL- CH+  CH-  OK   UP   DOWN LEFT RIGHT HOME BACK MENU SOURCE
-            {0x00, 0x01, 0x48, 0x49, 0x4A, 0x4B, 0x10, 0x13, 0x14, 0x11, 0x12, 0x64, 0x15, 0x40, 0x41, 0x1C, 0x53},
-            {0x0B, -1, 0x03, -1, 0x02, 0x09, 0x4A, 0x47, 0x4D, 0x49, -1, 0x0F, -1, 0x4E, 0x52, 0x4B, 0x53},
-            {2, 15, 7, 11, 18, 16, 104, 96, 97, 101, 98, 121, 88, 26, 1, 45, 0x53},
-            {0x45, 0x47, 0x15, 0x07, 0x09, 0x16, 0x1C, 0x18, 0x52, 0x08, 0x5A, 0x44, 0x43, 0x40, 0x46, 0x4A, 0x53},
-            {0x08, 0x09, 0x02, 0x03, 0x00, 0x01, 0x44, 0x40, 0x41, 0x07, 0x06, 0x7C, 0x28, 0x43, 0x0B, 0x5B, 0x53},
+            {0x00, 0x01, 0x48, 0x49, 0x4A, 0x4B, 0x10, 0x13, 0x14, 0x11, 0x12, 0x64, 0x15, 0x40, 0x41, 0x1C, 0x53, 0x10},
+            {11, 20, 10, -1, 2, 9, -1, -1, -1, -1, -1, -1, -1, -1, 27, 75, 83, 16},
+            {2, 15, 7, 11, 18, 16, 104, 96, 97, 101, 98, 121, 88, 26, 1, 45, 0x53, 0x10},
+            {0x45, 0x47, 0x15, 0x07, 0x09, 0x16, 0x1C, 0x18, 0x52, 0x08, 0x5A, 0x44, 0x43, 0x40, 0x46, 0x4A, 0x53, 0x10},
+            {0x08, 0x09, 0x02, 0x03, 0x00, 0x01, 0x44, 0x40, 0x41, 0x07, 0x06, 0x7C, 0x28, 0x43, 0x0B, 0x5B, 0x53, 0x10},
     };
 
     private ConsumerIrManager ir;
@@ -85,7 +85,7 @@ public class MainActivity extends Activity {
         hasIr = ir != null && ir.hasIrEmitter();
         getWindow().setStatusBarColor(Color.parseColor("#EDEFF2"));
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-        int[][] known = {{POWER, 0x0B}, {CH_UP, 0x02}, {CH_DN, 0x09}, {EXIT, 0x4B}, {SLEEP, 0x53}};
+        int[][] known = {{POWER, 11}, {CH_UP, 2}, {CH_DN, 9}, {VOL_UP, 10}, {MUTE, 20}, {SOURCE, 27}, {EXIT, 75}, {SLEEP, 83}, {MOUSE, 16}};
         SharedPreferences.Editor ke = prefs.edit();
         for (int[] kv : known) {
             ke.putInt("s" + set + "_k" + kv[0], kv[1]).putBoolean("ok_k" + kv[0], true);
@@ -93,6 +93,11 @@ public class MainActivity extends Activity {
         if (prefs.getInt("s" + set + "_k" + VOL_DN, -2) == 0x41) ke.remove("s" + set + "_k" + VOL_DN).remove("ok_k" + VOL_DN);
         if (prefs.getInt("s" + set + "_k" + BACK, -2) == 0x1E) ke.remove("s" + set + "_k" + BACK).remove("ok_k" + BACK);
         if (prefs.getInt("s" + set + "_k" + RIGHT, -2) == 0x4B) ke.remove("s" + set + "_k" + RIGHT).remove("ok_k" + RIGHT);
+        int[] wrong = {0x41, 0x4A, 0x47, 0x4D, 0x49, 0x0F, 0x1E, 0x4E, 0x03, 0x53, 0x4B};
+        for (int k : new int[]{VOL_DN, OK, UP, DOWN, LEFT, RIGHT, HOME, BACK, MENU}) {
+            int v = prefs.getInt("s" + set + "_k" + k, -2);
+            for (int w : wrong) if (v == w) { ke.remove("s" + set + "_k" + k).remove("ok_k" + k); }
+        }
         ke.apply();
         if (prefs.getInt("s" + set + "_k" + MUTE, -1) == 0x53) {
             prefs.edit().remove("s" + set + "_k" + MUTE).remove("ok_k" + MUTE).apply();
@@ -230,6 +235,7 @@ public class MainActivity extends Activity {
         centerCol.setGravity(Gravity.CENTER);
         centerCol.addView(remoteButton("SOURCE", SOURCE, false, "#FFFFFF", 13), tall(60));
         centerCol.addView(remoteButton("😴 خواب", SLEEP, false, "#FFFFFF", 13), tall(60));
+        centerCol.addView(remoteButton("🖱 موس", MOUSE, false, "#FFFFFF", 13), tall(60));
         LinearLayout ch = column();
         ch.addView(remoteButton("︿\nCH", CH_UP, true, "#2B4C7E", 20), tall(78));
         ch.addView(remoteButton("﹀", CH_DN, true, "#2B4C7E", 26), tall(78));
@@ -356,9 +362,13 @@ public class MainActivity extends Activity {
         updateSweepView();
     }
 
+    // Codes that do something else on this TV (EPG 3, size 6, info 14, digit3 15,
+    // picture mode 22, digit7 24, digit4 30, sleep 83) - skipped while sweeping.
+    static final int[] OTHER_FUNCS = {3, 6, 14, 15, 22, 24, 30, 83};
+
     /** Codes already confirmed for a key are skipped while sweeping. */
     private boolean isTaken(int code) {
-        if (code == 0x53 || code == 0x1E) return true; // 83 = sleep timer, 30 = digit "4" on this TV
+        for (int x : OTHER_FUNCS) if (x == code) return true;
         for (int k = 0; k < KEY_COUNT; k++) {
             if (prefs.getBoolean("ok_k" + k, false) && codeFor(k) == code) return true;
         }
