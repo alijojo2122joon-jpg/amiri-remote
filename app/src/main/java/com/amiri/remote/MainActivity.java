@@ -85,12 +85,15 @@ public class MainActivity extends Activity {
         hasIr = ir != null && ir.hasIrEmitter();
         getWindow().setStatusBarColor(Color.parseColor("#EDEFF2"));
         getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+        if (!prefs.getBoolean("ok_k" + POWER, false)) {
+            prefs.edit().putInt("s" + set + "_k" + POWER, 0x0B).putBoolean("ok_k" + POWER, true).apply();
+        }
         showRemote();
     }
 
     @Override
     public void onBackPressed() {
-        if (wizTitle != null) {
+        if (sweepNum != null) {
             showRemote();
         } else {
             super.onBackPressed();
@@ -139,7 +142,9 @@ public class MainActivity extends Activity {
     // ---------- Remote screen ----------
 
     private void showRemote() {
-        wizTitle = null;
+        pauseSweep();
+        sweepNum = null;
+        sweepToggle = null;
 
         LinearLayout root = page();
 
@@ -147,7 +152,7 @@ public class MainActivity extends Activity {
 
         status = new TextView(this);
         status.setText(hasIr
-                ? "اگر دکمه‌ای اشتباه کار کرد، پایین صفحه «⚙ تنظیم دقیق دکمه‌ها» را بزن."
+                ? "دکمه‌ها کار نمی‌کنند؟ پایین صفحه «⚙ پیدا کردن کد دکمه‌ها» را یک بار انجام بده."
                 : "این گوشی فرستنده مادون‌قرمز (IR) ندارد");
         status.setTextColor(Color.parseColor(hasIr ? "#8A9099" : "#FF7070"));
         status.setTextSize(13);
@@ -220,7 +225,7 @@ public class MainActivity extends Activity {
         root.addView(space(18));
 
         LinearLayout setupRow = row();
-        Button setup = plainButton("⚙  تنظیم دقیق دکمه‌ها", "#F5A623", 16);
+        Button setup = plainButton("⚙  پیدا کردن کد دکمه‌ها (یک بار)", "#F5A623", 16);
                 setup.setOnClickListener(v -> showSetup());
         setupRow.addView(setup, weighted(52));
         root.addView(setupRow);
@@ -237,172 +242,194 @@ public class MainActivity extends Activity {
         checkUpdate(false);
     }
 
-    // ---------- Setup wizard ----------
+    // ---------- Setup: one automatic sweep over all 256 codes ----------
 
-    // Order the wizard walks through (power last, so wrong guesses don't turn the TV off early).
-    static final int[] WIZARD_ORDER = {VOL_UP, VOL_DN, MUTE, CH_UP, CH_DN, UP, DOWN, LEFT, RIGHT,
-            OK, BACK, EXIT, HOME, MENU, SOURCE, POWER};
-    static final String[] EXPECT = {
-            "تلویزیون باید خاموش (یا روشن) شود",
-            "صدا باید قطع یا وصل شود",
-            "صدا باید زیاد شود",
-            "صدا باید کم شود",
-            "کانال باید یکی جلو برود",
-            "کانال باید یکی عقب برود",
-            "باید گزینه انتخاب شود (OK)",
-            "انتخاب در منو باید بالا برود",
-            "انتخاب در منو باید پایین برود",
-            "انتخاب در منو باید به چپ برود",
-            "انتخاب در منو باید به راست برود",
-            "باید صفحه اصلی (خانه) باز شود",
-            "باید یک صفحه برگردد",
-            "باید منو باز شود",
-            "باید منوی ورودی‌ها (HDMI / AV / TV) باز شود",
-            "باید از منو یا برنامه بیرون بیاید (EXIT)"};
-
-    private int wizStep = 0;
-    private int[] candidates;
-    private int candIdx = 0;
-    private TextView wizTitle, wizExpect, wizProgress, wizCode;
+    private int sweepCode = 0;
+    private boolean sweeping = false;
+    private TextView sweepNum, sweepInfo, sweepDone;
+    private Button sweepToggle;
+    private final Runnable sweepStep = new Runnable() {
+        @Override
+        public void run() {
+            if (!sweeping) return;
+            int next = nextFreeCode(sweepCode, 1);
+            if (next <= sweepCode) { // wrapped around: finished
+                pauseSweep();
+                toast("همه کدها امتحان شد ✔");
+                return;
+            }
+            sweepCode = next;
+            sendSweep();
+            handler.postDelayed(this, 1300);
+        }
+    };
 
     private void showSetup() {
-        wizStep = 0;
         LinearLayout root = page();
-        root.addView(title("تنظیم دقیق دکمه‌ها"));
+        root.addView(title("پیدا کردن کد دکمه‌ها"));
 
         TextView help = new TextView(this);
-        help.setText("گوشی را رو به تلویزیون بگیر. برای هر دکمه یک کد فرستاده می‌شود.\n"
-                + "اگر تلویزیون همان کار درست را کرد «✔ درست شد» بزن،\n"
-                + "وگرنه «✘ نه، بعدی» بزن تا کد بعدی امتحان شود.");
+        help.setText("گوشی را رو به تلویزیون بگیر و «▶ شروع» را بزن.\n"
+                + "گوشی هر ثانیه یک کد می‌فرستد. فقط به تلویزیون نگاه کن:\n"
+                + "هر وقت تلویزیون کاری کرد (صدا زیاد شد، منو باز شد، …)\n"
+                + "همان لحظه پایین بزن که چه کاری کرد. خودش ذخیره می‌شود و ادامه می‌دهد.");
         help.setTextColor(Color.parseColor("#8A9099"));
         help.setTextSize(13);
         help.setGravity(Gravity.CENTER);
-        help.setPadding(0, px(6), 0, px(14));
+        help.setPadding(0, px(6), 0, px(8));
         root.addView(help);
 
-        wizProgress = new TextView(this);
-        wizProgress.setTextColor(Color.parseColor("#E8920C"));
-        wizProgress.setTextSize(13);
-        wizProgress.setGravity(Gravity.CENTER);
-        root.addView(wizProgress);
+        sweepNum = new TextView(this);
+        sweepNum.setTextColor(Color.parseColor("#1F2329"));
+        sweepNum.setTextSize(44);
+        sweepNum.setTypeface(Typeface.DEFAULT_BOLD);
+        sweepNum.setGravity(Gravity.CENTER);
+        root.addView(sweepNum);
 
-        wizTitle = new TextView(this);
-        wizTitle.setTextColor(Color.parseColor("#1F2329"));
-        wizTitle.setTextSize(34);
-        wizTitle.setTypeface(Typeface.DEFAULT_BOLD);
-        wizTitle.setGravity(Gravity.CENTER);
-        root.addView(wizTitle);
+        sweepInfo = new TextView(this);
+        sweepInfo.setTextColor(Color.parseColor("#E8920C"));
+        sweepInfo.setTextSize(13);
+        sweepInfo.setGravity(Gravity.CENTER);
+        sweepInfo.setPadding(0, 0, 0, px(6));
+        root.addView(sweepInfo);
 
-        wizExpect = new TextView(this);
-        wizExpect.setTextColor(Color.parseColor("#2B2F36"));
-        wizExpect.setTextSize(15);
-        wizExpect.setGravity(Gravity.CENTER);
-        root.addView(wizExpect);
+        LinearLayout ctl = row();
+        ctl.addView(actionButton("◀ کد قبلی", "#FFFFFF", v -> { pauseSweep(); sweepCode = nextFreeCode(sweepCode, -1); sendSweep(); }), weighted(54));
+        sweepToggle = actionButton("▶ شروع", "#F5A623", v -> toggleSweep());
+        ctl.addView(sweepToggle, weighted(54));
+        ctl.addView(actionButton("کد بعدی ▶", "#FFFFFF", v -> { pauseSweep(); sweepCode = nextFreeCode(sweepCode, 1); sendSweep(); }), weighted(54));
+        root.addView(ctl);
+        LinearLayout again = row();
+        again.addView(actionButton("📡 همین کد را دوباره بفرست", "#FFFFFF", v -> sendRaw(sweepCode)), weighted(48));
+        root.addView(again);
 
-        wizCode = new TextView(this);
-        wizCode.setTextColor(Color.parseColor("#8A9099"));
-        wizCode.setTextSize(12);
-        wizCode.setGravity(Gravity.CENTER);
-        wizCode.setPadding(0, px(4), 0, px(12));
-        root.addView(wizCode);
+        TextView q = new TextView(this);
+        q.setText("تلویزیون چه کاری کرد؟");
+        q.setTextColor(Color.parseColor("#1F2329"));
+        q.setTextSize(16);
+        q.setTypeface(Typeface.DEFAULT_BOLD);
+        q.setGravity(Gravity.CENTER);
+        q.setPadding(0, px(12), 0, px(2));
+        root.addView(q);
 
-        LinearLayout yes = row();
-        yes.addView(actionButton("✔  درست شد", "#F5A623", v -> confirmStep()), weighted(64));
-        root.addView(yes);
+        int[] order = {VOL_UP, VOL_DN, MUTE, CH_UP, CH_DN, UP, DOWN, LEFT, RIGHT, OK,
+                BACK, EXIT, HOME, MENU, SOURCE, POWER};
+        LinearLayout line = null;
+        for (int i = 0; i < order.length; i++) {
+            if (i % 3 == 0) { line = row(); root.addView(line); }
+            final int key = order[i];
+            line.addView(actionButton(KEY_NAMES[key], "#FFFFFF", v -> assignSweep(key)), weighted(50));
+        }
+        for (int f = order.length % 3; f > 0 && f < 3; f++) line.addView(new View(this), weighted(50));
 
-        LinearLayout no = row();
-        no.addView(actionButton("✘  نه، بعدی", "#FFFFFF", v -> nextCandidate(1)), weighted(60));
-        root.addView(no);
+        sweepDone = new TextView(this);
+        sweepDone.setTextColor(Color.parseColor("#2B2F36"));
+        sweepDone.setTextSize(13);
+        sweepDone.setPadding(px(8), px(12), px(8), px(4));
+        root.addView(sweepDone);
 
-        LinearLayout more = row();
-        more.addView(actionButton("◀ کد قبلی", "#FFFFFF", v -> nextCandidate(-1)), weighted(52));
-        more.addView(actionButton("📡 دوباره بفرست", "#FFFFFF", v -> sendRaw(candidates[candIdx])), weighted(52));
-        root.addView(more);
-
-        LinearLayout nav = row();
-        nav.addView(actionButton("دکمه قبلی", "#FFFFFF", v -> goStep(wizStep - 1)), weighted(50));
-        nav.addView(actionButton("رد شو ⏭", "#FFFFFF", v -> goStep(wizStep + 1)), weighted(50));
-        root.addView(nav);
-
-        root.addView(space(14));
+        root.addView(space(8));
         LinearLayout last = row();
         last.addView(actionButton("پاک کردن همه", "#D32F2F", v -> resetSet()), weighted(50));
-        last.addView(actionButton("برگشت به ریموت", "#FFFFFF", v -> showRemote()), weighted(50));
+        last.addView(actionButton("✔ تمام، برگشت", "#F5A623", v -> showRemote()), weighted(50));
         root.addView(last);
 
-        goStep(0);
+        sweepCode = prefs.getInt("sweep_pos", 0);
+        updateSweepView();
     }
 
-    private void goStep(int step) {
-        if (step < 0) step = 0;
-        if (step >= WIZARD_ORDER.length) {
-            toast("همه دکمه‌ها تنظیم شد ✔");
-            showRemote();
-            return;
-        }
-        wizStep = step;
-        int key = WIZARD_ORDER[step];
-        candidates = buildCandidates(key);
-        candIdx = 0;
-        wizProgress.setText("دکمه " + (step + 1) + " از " + WIZARD_ORDER.length
-                + (prefs.getBoolean("ok_k" + key, false) ? "  (قبلاً تأیید شده)" : ""));
-        wizTitle.setText(KEY_NAMES[key]);
-        wizExpect.setText(EXPECT[key]);
-        if (key == POWER) {
-            wizExpect.setText(EXPECT[key] + "\n(اگر خاموش شد، «✔» بزن و با همین دکمه روشنش کن)");
-        }
-        sendCandidate();
-    }
-
-    /** Current code first, then the codes from every known table, then all other codes. */
-    private int[] buildCandidates(int key) {
-        java.util.LinkedHashSet<Integer> list = new java.util.LinkedHashSet<>();
-        java.util.HashSet<Integer> taken = new java.util.HashSet<>();
+    /** Codes already confirmed for a key are skipped while sweeping. */
+    private boolean isTaken(int code) {
         for (int k = 0; k < KEY_COUNT; k++) {
-            if (k != key && prefs.getBoolean("ok_k" + k, false)) taken.add(codeFor(k));
+            if (prefs.getBoolean("ok_k" + k, false) && codeFor(k) == code) return true;
         }
-        list.add(codeFor(key));
-        list.add(CODES[1][key]);
-        for (int[] row : CODES) list.add(row[key]);
-        for (int[] row : CODES) for (int c : row) list.add(c);
-        for (int c = 0; c < 256; c++) list.add(c);
-        java.util.ArrayList<Integer> out = new java.util.ArrayList<>();
-        for (int c : list) if (!taken.contains(c) || c == codeFor(key)) out.add(c);
-        int[] arr = new int[out.size()];
-        for (int i = 0; i < arr.length; i++) arr[i] = out.get(i);
-        return arr;
+        return false;
     }
 
-    private void nextCandidate(int d) {
-        candIdx = (candIdx + d + candidates.length) % candidates.length;
-        sendCandidate();
+    private int nextFreeCode(int from, int dir) {
+        int c = from;
+        for (int i = 0; i < 256; i++) {
+            c = (c + dir + 256) & 0xFF;
+            if (!isTaken(c)) return c;
+        }
+        return from;
     }
 
-    private void sendCandidate() {
-        int c = candidates[candIdx];
-        wizCode.setText("کد " + c + "   •   امتحان " + (candIdx + 1) + " از " + candidates.length);
-        sendRaw(c);
+    private void sendSweep() {
+        prefs.edit().putInt("sweep_pos", sweepCode).apply();
+        sendRaw(sweepCode);
+        updateSweepView();
     }
 
-    private void confirmStep() {
-        int key = WIZARD_ORDER[wizStep];
+    private void toggleSweep() {
+        if (sweeping) {
+            pauseSweep();
+        } else {
+            sweeping = true;
+            sweepToggle.setText("⏸ توقف");
+            styleButton(sweepToggle, "#D32F2F");
+            sendSweep();
+            handler.postDelayed(sweepStep, 1300);
+        }
+    }
+
+    private void pauseSweep() {
+        sweeping = false;
+        handler.removeCallbacks(sweepStep);
+        if (sweepToggle != null) {
+            sweepToggle.setText("▶ ادامه");
+            styleButton(sweepToggle, "#F5A623");
+        }
+    }
+
+    private void assignSweep(int key) {
+        boolean wasRunning = sweeping;
+        pauseSweep();
+        // People react ~1 s late, so if the sweep was running the action most
+        // likely came from the code sent just before the current one.
+        int code = sweepCode;
+        if (wasRunning && prefs.getLong("sweep_t", 0) > System.currentTimeMillis() - 500) {
+            code = nextFreeCode(sweepCode, -1);
+        }
         prefs.edit()
-                .putInt("s" + set + "_k" + key, candidates[candIdx])
+                .putInt("s" + set + "_k" + key, code)
                 .putBoolean("ok_k" + key, true)
                 .apply();
-        toast("«" + KEY_NAMES[key] + "» ذخیره شد ✔");
-        goStep(wizStep + 1);
+        toast("کد " + code + " ← «" + KEY_NAMES[key] + "» ✔  (اگر مطمئن نیستی با ◀ ▶ چک کن)");
+        updateSweepView();
+        if (wasRunning) toggleSweep();
+    }
+
+    private void updateSweepView() {
+        if (sweepNum == null) return;
+        prefs.edit().putLong("sweep_t", System.currentTimeMillis()).apply();
+        sweepNum.setText(String.valueOf(sweepCode));
+        sweepInfo.setText("کد " + sweepCode + " از ۲۵۵");
+        StringBuilder sb = new StringBuilder("پیدا شده‌ها:  ");
+        int n = 0;
+        for (int k = 0; k < KEY_COUNT; k++) {
+            if (prefs.getBoolean("ok_k" + k, false)) {
+                if (n++ > 0) sb.append("   •   ");
+                sb.append(KEY_NAMES[k]).append(" = ").append(codeFor(k));
+            }
+        }
+        sweepDone.setText(n == 0 ? "هنوز دکمه‌ای پیدا نشده" : sb.toString());
     }
 
     private void resetSet() {
+        pauseSweep();
         SharedPreferences.Editor e = prefs.edit();
         for (int k = 0; k < KEY_COUNT; k++) {
             e.remove("s" + set + "_k" + k);
             e.remove("ok_k" + k);
         }
+        e.putInt("sweep_pos", 0);
         e.apply();
-        toast("همه دکمه‌ها به حالت اول برگشت");
-        goStep(0);
+        // power is known to be code 11 on this TV
+        prefs.edit().putInt("s" + set + "_k" + POWER, 0x0B).putBoolean("ok_k" + POWER, true).apply();
+        sweepCode = 0;
+        toast("همه پاک شد. از اول شروع کن");
+        updateSweepView();
     }
 
     // ---------- In-app update ----------
